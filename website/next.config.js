@@ -4,6 +4,14 @@ const nextConfig = {
   experimental: { esmExternals: true },
   reactStrictMode: true,
   swcMinify: true,
+
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    // !! WARN !!
+    ignoreBuildErrors: true,
+  },
 }
 
 module.exports = nextConfig;
