@@ -1,5 +1,5 @@
 import { useContext } from 'react'
 
-import { AuthProviderContext } from '@/components/Providers/Web3AuthProvider'
+import { Web3AuthProviderContext } from '@/components/Providers/Web3AuthProvider'
 
-export default () => useContext(AuthProviderContext)
+export default () => useContext(Web3AuthProviderContext)
