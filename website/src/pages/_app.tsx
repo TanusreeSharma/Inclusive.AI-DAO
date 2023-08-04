@@ -1,4 +1,4 @@
-import { Stack, Typography } from '@mui/material'
+import { Button, Stack, Typography } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
 import type { AppProps } from 'next/app'
 import { Inter } from 'next/font/google'
@@ -32,12 +32,12 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
   const userProfile = useAppSelector(selectProfile)
 
   useEffect(() => {
-    const notUninitiated = web3AuthContext.status !== Web3AuthStatus.UNINITIATED
+    // const notUninitiated = web3AuthContext.status !== Web3AuthStatus.UNINITIATED
     const notConnecting = web3AuthContext.status !== Web3AuthStatus.CONNECTING
 
     if (
       (!web3AuthContext.provider || !web3AuthContext.user) &&
-      (notUninitiated && notConnecting)
+      (notConnecting)
     ) {
       if (router.pathname !== '/auth') {
         router.replace('/auth')
@@ -53,7 +53,20 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
     }
   }, [web3AuthContext, userProfile])
 
-  if (web3AuthContext.status === Web3AuthStatus.UNINITIATED || web3AuthContext.status === Web3AuthStatus.CONNECTING) {
+  if (web3AuthContext.status === Web3AuthStatus.UNINITIATED) {
+    return (
+      <Stack height="100%" alignItems="center" justifyContent="center">
+        {/* <Typography variant="h6" fontWeight="bold" pb={2}>
+          Auth Page
+        </Typography> */}
+        <Button variant="outlined" size="large" onClick={web3AuthContext.login} sx={{ width: 200 }}>
+          Sign Up / Sign In
+        </Button>
+      </Stack>
+    )
+  }
+
+  if (web3AuthContext.status === Web3AuthStatus.CONNECTING) {
     return (
       <Stack
         height="100%"
