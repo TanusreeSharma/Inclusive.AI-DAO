@@ -14,12 +14,12 @@ use {
 
 #[axum_macros::debug_handler]
 pub async fn gpt_handler(
-    JwtClaims(user): JwtClaims<RegisteredClaims>,
+    // JwtClaims(user): JwtClaims<RegisteredClaims>,
     Query(params): Query<HandlerGetGptParams>,
 ) -> impl IntoResponse {
     let prompt = &params.prompt.unwrap();
 
-    match call_gpt4_api(prompt.to_string()).await {
+    match call_gpt3_api(prompt.to_string()).await {
         Ok(data) => {
             let body = serde_json::to_string(&data).unwrap();
             Response::builder()
@@ -40,10 +40,10 @@ pub async fn gpt_handler(
     }
 }
 
-async fn call_gpt4_api(prompt: String) -> anyhow::Result<Gpt4Response, Error> {
+async fn call_gpt3_api(prompt: String) -> anyhow::Result<GptChatResponse, Error> {
     let api_url = "https://api.openai.com/v1/chat/completions"; // GPT-4 API endpoint
-    let prompt_data = Gpt4Prompt {
-        model: "gpt-4".into(),
+    let prompt_data = GptChatPrompt {
+        model: "gpt-3.5-turbo".into(),
         messages: vec![
             Message {
                 role: "system".into(),
@@ -54,7 +54,7 @@ async fn call_gpt4_api(prompt: String) -> anyhow::Result<Gpt4Response, Error> {
                 content: prompt,
             },
         ],
-        max_tokens: 2048, // todo: parameter
+        max_tokens: 1024, // todo: parameterize
     };
 
     let client = reqwest::Client::new();
@@ -68,16 +68,16 @@ async fn call_gpt4_api(prompt: String) -> anyhow::Result<Gpt4Response, Error> {
         .await?
         .text()
         .await?;
-    // .json::<Gpt4Response>()
+    // .json::<GptChatResponse>()
     // .await?;
 
     tracing::warn!("Response Body: {}", res_body);
-    let res: Gpt4Response = serde_json::from_str(&res_body).unwrap();
+    let res: GptChatResponse = serde_json::from_str(&res_body).unwrap();
     Ok(res)
 }
 
 #[derive(Serialize)]
-struct Gpt4Prompt {
+struct GptChatPrompt {
     model: String,
     messages: Vec<Message>,
     max_tokens: u16,
@@ -95,7 +95,7 @@ struct ErrorResponse {
 }
 
 #[derive(Deserialize, Serialize)]
-struct Gpt4Response {
+struct GptChatResponse {
     id: String,
     object: String,
     created: i32,

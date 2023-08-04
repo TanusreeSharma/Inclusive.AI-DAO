@@ -9,12 +9,13 @@ use {
         routing::{get, post},
         Router,
     },
+    jwt_authorizer::JwtAuthorizer,
     std::{sync::Arc, time::Duration},
     tower::ServiceBuilder,
-    tower_http::cors::CorsLayer,
+    tower_http::{cors::CorsLayer, trace::TraceLayer},
 };
 
-pub fn create_router(app_state: Arc<AppState>) -> Router {
+pub async fn create_router(app_state: Arc<AppState>, jwt_auth: JwtAuthorizer) -> Router {
     let cors = CorsLayer::new()
         .allow_origin([
             "http://localhost:3000".parse::<HeaderValue>().unwrap(),
@@ -26,17 +27,29 @@ pub fn create_router(app_state: Arc<AppState>) -> Router {
         .allow_credentials(true)
         .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE]);
 
-    let app = Router::new()
-        .route("/ws", get(handlers::websocket_handler))
+    let gated_api = Router::new()
+        .layer(jwt_auth.layer().await.unwrap())
+        .route("/verify", get(handlers::verify_handler))
         // .route("/api/ai-assistant", post(handlers::gpt_handler))
-        .route("/api/ai-assistant", get(handlers::gpt_handler))
-        .with_state(app_state);
+        .route("/ai-assistant", get(handlers::gpt_handler));
 
-    app.layer(
-        ServiceBuilder::new()
-            .layer(HandleErrorLayer::new(errors::handle_timeout_error))
-            .timeout(Duration::from_secs(30)),
-    )
-    .layer(cors)
-    // .layer(ConcurrencyLimitLayer::new(16))
+    Router::new()
+        //
+        // public endpoints
+        //
+        .route("/jwks", get(handlers::jwks_handler))
+        .route("/ws", get(handlers::websocket_handler))
+        .route("/ping", get(handlers::ping_handler))
+        //
+        // protected endpoints (under `/api`)
+        //
+        .nest("/api", gated_api)
+        // .layer(TraceLayer::new_for_http())
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(errors::handle_timeout_error))
+                .timeout(Duration::from_secs(30)),
+        )
+        .layer(cors)
+        .with_state(app_state)
 }

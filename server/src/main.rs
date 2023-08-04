@@ -15,7 +15,6 @@ pub mod utils;
 use {
     crate::states::AppState,
     jwt_authorizer::{JwtAuthorizer, Validation},
-    serde_json::Value,
     std::{
         collections::HashMap,
         net::SocketAddr,
@@ -58,16 +57,20 @@ async fn main() {
     let jwt_validation = Validation::new()
         .iss(&["https://api.openlogin.com"])
         .nbf(true)
-        .leeway(20);
+        .leeway(60);
 
-    let jwt_auth: JwtAuthorizer<Value> =
-        JwtAuthorizer::from_jwks_url("https://api.openlogin.com/jwks").validation(jwt_validation);
+    let jwt_url = match exec_env {
+        ExecEnv::Development => "http://localhost:8080/jwks",
+        ExecEnv::Production => "https://inclusive-ai-dao.fly.dev/jwks",
+    };
+    let jwt_auth: JwtAuthorizer =
+        JwtAuthorizer::from_jwks_url(jwt_url).validation(jwt_validation);
 
     let app_state = Arc::new(AppState {
         rooms: Mutex::new(HashMap::new()),
     });
 
-    let app = routes::create_router(app_state).layer(jwt_auth.layer().await.unwrap());
+    let app: axum::Router = routes::create_router(app_state, jwt_auth).await;
 
     let ip_addr = match exec_env {
         ExecEnv::Development => [127, 0, 0, 1],

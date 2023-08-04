@@ -6,16 +6,14 @@ use {
     tokio::sync::broadcast,
 };
 
-// Our shared state
+// Global App shared state
 pub struct AppState {
     /// Keys are the name of the channel
     pub rooms: Mutex<HashMap<String, RoomState>>,
 }
 
 pub struct RoomState {
-    /// Previously stored in AppState
     pub user_set: HashSet<String>,
-    /// Previously created in main.
     pub tx: broadcast::Sender<String>,
 }
 
