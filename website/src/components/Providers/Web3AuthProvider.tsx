@@ -80,6 +80,7 @@ export default function Web3AuthProvider({ children }: React.PropsWithChildren) 
       web3auth.connect().then((provider) => {
         setProvider(provider || undefined)
       })
+      console.log(user)
       setUser(user)
     },
     [],
@@ -154,7 +155,7 @@ export default function Web3AuthProvider({ children }: React.PropsWithChildren) 
   // Initialize Web3Auth
   //
   useEffect(() => {
-    console.log(web3AuthConfig)
+    // console.log(web3AuthConfig)
     if (!web3AuthConfig || !web3AuthConfig.clientId) return
 
     const newWeb3auth = new Web3Auth(web3AuthConfig)

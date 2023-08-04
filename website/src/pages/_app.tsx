@@ -17,7 +17,7 @@ import Web3AuthProvider, {
 import Topbar from '@/components/Topbar'
 import { useAppDispatch, useAppSelector } from '@/hooks'
 import { BodyLayout, MainLayout } from '@/layouts'
-import { selectProfile, updateProfile } from '@/slices/profile'
+import { selectProfile, updateJwtToken, updateProfile } from '@/slices/profile'
 import store from '@/store'
 import customTheme from '@/theme'
 
@@ -50,6 +50,7 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
         id: web3AuthContext.user.verifierId || '',
         name: web3AuthContext.user.name || '',
       }))
+      dispatch(updateJwtToken(web3AuthContext.user.oAuthAccessToken || web3AuthContext.user.idToken || ''))
     }
   }, [web3AuthContext, userProfile])
 

@@ -112,10 +112,32 @@ export const initModalConfig: {
       },
       showOnModal: true,
     },
-    // only allow social login, disable external wallet
+    //
+    // only allow social login, disable all external wallet
+    //
     [WALLET_ADAPTERS.TORUS_EVM]: {
       label: 'torus',
       showOnModal: false,
+      showOnMobile: false,
+      showOnDesktop: false,
+    },
+    [WALLET_ADAPTERS.METAMASK]: {
+      label: 'metamask',
+      showOnModal: false,
+      showOnMobile: false,
+      showOnDesktop: false,
+    },
+    [WALLET_ADAPTERS.WALLET_CONNECT_V2]: {
+      label: 'walletconnect',
+      showOnModal: false,
+      showOnMobile: false,
+      showOnDesktop: false,
+    },
+    [WALLET_ADAPTERS.WALLET_CONNECT_V1]: {
+      label: 'walletconnect',
+      showOnModal: false,
+      showOnMobile: false,
+      showOnDesktop: false,
     },
   },
 }
