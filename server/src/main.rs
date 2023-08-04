@@ -6,74 +6,75 @@
 //! cd examples && cargo run -p example-chat
 //! ```
 
-use tokio::signal;
-
 pub mod errors;
 pub mod handlers;
+pub mod routes;
 pub mod states;
 pub mod utils;
 
 use {
     crate::states::AppState,
-    axum::{
-        error_handling::HandleErrorLayer,
-        response::Html,
-        routing::{get, post},
-        Router,
-    },
-    http::{header::CONTENT_TYPE, Method},
+    jwt_authorizer::{JwtAuthorizer, Validation},
+    serde_json::Value,
     std::{
         collections::HashMap,
         net::SocketAddr,
         sync::{Arc, Mutex},
-        time::Duration,
     },
-    tower::ServiceBuilder,
-    tower_http::cors::{Any, CorsLayer},
+    tokio::signal,
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt},
 };
 
-const SERVER_PORT: u16 = 8000;
+const SERVER_PORT: u16 = 8080;
+
+pub enum ExecEnv {
+    // Execution Environment
+    Development,
+    Production,
+}
 
 #[tokio::main]
 async fn main() {
-    dotenvy::dotenv().expect(".env file not found");
+    // Skip checking if .env is loaded (expect to load on local machine) as it's clunky to find in
+    // cloud services like Render and Fly
+    let _ = dotenvy::dotenv(); // .expect(".env file not found");
+
+    let exec_env = match std::env::var("EXEC_ENV")
+        .unwrap_or_else(|_| "development".into())
+        .as_str()
+    {
+        "development" => ExecEnv::Development,
+        "production" => ExecEnv::Production,
+        _ => panic!("EXEC_ENV must be either 'development' or 'production'"),
+    };
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_chat=trace".into()),
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "app=trace".into()),
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let cors = CorsLayer::new()
-        // allow `GET` and `POST` when accessing the resource
-        .allow_methods([Method::GET, Method::POST])
-        // allow requests from any origin
-        .allow_origin(Any)
-        .allow_headers([CONTENT_TYPE]);
+    let jwt_validation = Validation::new()
+        .iss(&["https://api.openlogin.com"])
+        .nbf(true)
+        .leeway(20);
+
+    let jwt_auth: JwtAuthorizer<Value> =
+        JwtAuthorizer::from_jwks_url("https://api.openlogin.com/jwks").validation(jwt_validation);
 
     let app_state = Arc::new(AppState {
         rooms: Mutex::new(HashMap::new()),
     });
 
-    let app = Router::new()
-        // .layer(ConcurrencyLimitLayer::new(16))
-        .route("/", get(index))
-        .route("/ws", get(handlers::websocket_handler))
-        // .route("/api/ai-assistant", post(handlers::gpt_handler))
-        .route("/api/ai-assistant", get(handlers::gpt_handler))
-        .with_state(app_state);
+    let app = routes::create_router(app_state).layer(jwt_auth.layer().await.unwrap());
 
-    let app = app
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(errors::handle_timeout_error))
-                .timeout(Duration::from_secs(30)),
-        )
-        .layer(cors);
+    let ip_addr = match exec_env {
+        ExecEnv::Development => [127, 0, 0, 1],
+        ExecEnv::Production => [0, 0, 0, 0],
+    };
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], SERVER_PORT));
+    let addr = SocketAddr::from((ip_addr, SERVER_PORT));
     tracing::debug!("listening on {}", addr);
 
     axum::Server::bind(&addr)
@@ -81,11 +82,6 @@ async fn main() {
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
-}
-
-// Include utf-8 file at **compile** time.
-async fn index() -> Html<&'static str> {
-    Html(std::include_str!("../chat.html"))
 }
 
 // https://github.com/tokio-rs/axum/blob/main/examples/graceful-shutdown/src/main.rs

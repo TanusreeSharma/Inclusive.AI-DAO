@@ -6,13 +6,17 @@ use {
         http::{Response, StatusCode},
         response::IntoResponse,
     },
+    jwt_authorizer::{JwtClaims, RegisteredClaims},
     reqwest::Error,
     serde::{Deserialize, Serialize},
     std::env,
 };
 
 #[axum_macros::debug_handler]
-pub async fn gpt_handler(Query(params): Query<HandlerGetGptParams>) -> impl IntoResponse {
+pub async fn gpt_handler(
+    JwtClaims(user): JwtClaims<RegisteredClaims>,
+    Query(params): Query<HandlerGetGptParams>,
+) -> impl IntoResponse {
     let prompt = &params.prompt.unwrap();
 
     match call_gpt4_api(prompt.to_string()).await {
@@ -55,16 +59,20 @@ async fn call_gpt4_api(prompt: String) -> anyhow::Result<Gpt4Response, Error> {
 
     let client = reqwest::Client::new();
     let openai_api_key = env::var("OPENAI_API_KEY").expect("Error: OPENAI_API_KEY not found");
-    let res = client
+    let res_body = client
         .post(api_url)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", openai_api_key))
         .json(&prompt_data)
         .send()
         .await?
-        .json::<Gpt4Response>()
+        .text()
         .await?;
+    // .json::<Gpt4Response>()
+    // .await?;
 
+    tracing::warn!("Response Body: {}", res_body);
+    let res: Gpt4Response = serde_json::from_str(&res_body).unwrap();
     Ok(res)
 }
 

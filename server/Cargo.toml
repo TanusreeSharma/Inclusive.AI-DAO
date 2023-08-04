@@ -3,6 +3,10 @@ name = "server"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -14,7 +18,8 @@ chrono = { version = "0.4.26", features = ["serde"] }
 dotenvy = "0.15.7"
 env_logger = "0.10.0"
 futures = "0.3.28"
-http = "0.2.9"
+jsonwebtoken = "8.3.0"
+jwt-authorizer = "0.10.1"
 log = "0.4.19"
 reqwest =  { version = "0.11", features = ["json"] }
 serde = { version = "1.0.180", features = ["derive"] }
