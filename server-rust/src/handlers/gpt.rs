@@ -71,7 +71,7 @@ async fn call_gpt3_api(prompt: String) -> anyhow::Result<GptChatResponse, Error>
     // .json::<GptChatResponse>()
     // .await?;
 
-    tracing::warn!("Response Body: {}", res_body);
+    tracing::debug!("Response Body: {}", res_body);
     let res: GptChatResponse = serde_json::from_str(&res_body).unwrap();
     Ok(res)
 }

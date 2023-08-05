@@ -35,11 +35,11 @@ primary_region = "sea"
     interval = "10s"
     timeout = "2s"
 
-  [[services.http_checks]]
+  [[services.checks]]
     interval = "5s"
     timeout = "5s"
     grace_period = "10s"
     method = "get"
-    path = "/health"
-    protocol = "http"
+    path = "/ping"
+    protocol = "https"
     tls_skip_verify = false
