@@ -1,30 +1,35 @@
+import 'es6-shim'
 import 'reflect-metadata' // for routing-controllers
 
 import compression from 'compression'
+import express from 'express'
+import { createServer } from 'http'
 import path from 'path'
 import passport from 'passport'
 // import morgan from 'morgan'
-import { Action, createExpressServer } from 'routing-controllers'
-// import socketIO from 'socket.io'
+import { Action, useExpressServer } from 'routing-controllers'
+import { SocketControllers } from 'socket-controllers'
+import { Server as SocketIoServer } from 'socket.io'
+import { Container } from 'typedi'
 
 import { envVars, jwtStrategy } from '@/config'
 import { ApiError } from '@/utils'
+import ChatController from './controllers/Chat.controller.ws'
 
 // Custom JWT strategy
 passport.use('jwt', jwtStrategy)
 
 //
-// Set up express server
+// Set up express server with websocket enabled
+// Need to use `useExpressServer` instead of `createExpressServer` to combine both routing-controllers and socket-controllers
 //
 
-const app = createExpressServer({
+let app = express()
+
+useExpressServer(app, {
   cors: true,
-  controllers: [
-    path.join(__dirname + '/controllers/*.controller.ts')
-  ],
-  middlewares: [
-    path.join(__dirname + '/middleware/*.middleware.ts')
-  ],
+  controllers: [path.join(__dirname + '/controllers/*.controller.ts')],
+  middlewares: [path.join(__dirname + '/middleware/*.middleware.ts')],
   authorizationChecker: (action: Action) =>
     new Promise<boolean>((resolve, reject) => {
       passport.authenticate('jwt', (err: ApiError, user: string) => {
@@ -39,28 +44,30 @@ const app = createExpressServer({
   currentUserChecker: (action: Action) => action.request.user
 })
 
+const httpServer = createServer(app)
+const socketIo = new SocketIoServer(httpServer)
+
+// socketIo.use((socket: any, next: Function) => {
+//   console.log('Custom middleware')
+//   next()
+// })
+
+new SocketControllers({
+  io: socketIo,
+  // port: envVars.PORT,
+  container: Container,
+  controllers: [path.join(__dirname + '/controllers/*.controller.ws.ts')],
+  middlewares: [path.join(__dirname + '/middleware/*.middleware.ws.ts')]
+})
+
 //
-// Attach legacy middlewares
+// Attach legacy middlewares & start
 //
 
 app.use(compression)
 
-//
-// Socketio setup
-//
-
-const server = require('http').createServer(app);
-const io = require('socket.io')(server)
-
-io.on('connection', (socket) => {
-  console.log('user connected');
-  socket.on('disconnect', function () {
-    console.log('user disconnected');
-  });
-})
-
-server.listen(envVars.PORT, function() {
-  console.log(`Listening on port ${envVars.PORT}`);
+httpServer.listen(envVars.PORT, function () {
+  console.log(`Listening on port ${envVars.PORT}`)
 })
 
 // app.use(passport.initialize())
