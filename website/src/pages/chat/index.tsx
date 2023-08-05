@@ -3,28 +3,47 @@
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { styled } from '@mui/system'
 import { useState, useCallback, useEffect } from 'react'
-import useWebSocket, { ReadyState } from 'react-use-websocket'
+// import useWebSocket, { ReadyState } from 'react-use-websocket'
+import { io as socketIo, Socket } from 'socket.io-client'
 
 import { useAppDispatch, useAppSelector } from '@/hooks'
 import { selectProfile } from '@/slices/profile'
 import { addSelfMessageHistory, selectSelfMessageHistory } from '@/slices/chat'
+
+function useSocket(url: string) {
+  const [socket, setSocket] = useState<Socket | undefined>(undefined)
+
+  useEffect(() => {
+    // Need `transports` defined as `websocket` for CORS
+    const _socket = socketIo(url, { transports : ['websocket'] })
+    setSocket(_socket)
+    // clean up
+    return () => {
+      _socket.disconnect()
+    }
+  }, [])
+
+  return socket
+}
 
 export default function ChatIndexPage() {
   const dispatch = useAppDispatch()
   const userProfile = useAppSelector(selectProfile)
   const selfMessageHistory = useAppSelector(selectSelfMessageHistory)
 
-  const ws = useWebSocket(process.env.NEXT_PUBLIC_WS_URL as string)
+  // const ws = useWebSocket(process.env.NEXT_PUBLIC_WS_URL as string)
+  const socket = useSocket(process.env.NEXT_PUBLIC_WS_URL as string)
 
   const [draftMessage, setDraftMessage] = useState('')
   const [isChatDisabled, setIsChatDisabled] = useState(false)
   const [initiated, setInitiated] = useState(false)
 
   const handleSendMessage = useCallback(() => {
-    if (!ws || !draftMessage || isChatDisabled) return
+    if (!socket || !draftMessage || isChatDisabled) return
     setIsChatDisabled(true)
-    ws.sendMessage(draftMessage)
-    
+    // ws.sendMessage(draftMessage)
+    console.log(socket)
+
     const msg = draftMessage
     setDraftMessage('Waiting for AI response...') // for self rooms
 
@@ -45,38 +64,40 @@ export default function ChatIndexPage() {
       console.log(json)
       return json.message.choices[0].message.content as string
     }
-    getAIResponse().then((response) => {
-      dispatch(addSelfMessageHistory(response))
-    }).catch((err) => {
+    getAIResponse()
+      .then((response) => {
+        dispatch(addSelfMessageHistory(response))
+      })
+      .catch((err) => {})
+      .finally(() => {
+        setDraftMessage('')
+        setIsChatDisabled(false)
+      })
+  }, [socket, draftMessage])
 
-    }).finally(() => {
-      setDraftMessage('')
-      setIsChatDisabled(false)
-    })
-  }, [ws, draftMessage])
+  // useEffect(() => {
+  //   if (userProfile.id === '') return
+  //   if (initiated || ws.readyState === ReadyState.CLOSING) return
 
-  useEffect(() => {
-    if (userProfile.id === '') return
-    if (initiated || ws.readyState === ReadyState.CLOSING) return
+  //   // For AI-assistant chat, each user's channel is their user ID
+  //   ws.sendJsonMessage({
+  //     user_id: userProfile.id,
+  //     username: userProfile.name,
+  //     channel: userProfile.id,
+  //   })
+  //   // TODO: set true only after receiving room confirmation from ws
+  //   setInitiated(true)
+  // }, [userProfile, ws])
 
-    // For AI-assistant chat, each user's channel is their user ID
-    ws.sendJsonMessage({
-      user_id: userProfile.id,
-      username: userProfile.name,
-      channel: userProfile.id,
-    })
-    // TODO: set true only after receiving room confirmation from ws
-    setInitiated(true)
-  }, [userProfile, ws])
+  // useEffect(() => {
+  //   if (ws.lastMessage !== null) {
+  //     // console.log(ws.lastMessage)
+  //     dispatch(addSelfMessageHistory(ws.lastMessage.data))
+  //   }
+  // }, [ws.lastMessage])
 
-  useEffect(() => {
-    if (ws.lastMessage !== null) {
-      // console.log(ws.lastMessage)
-      dispatch(addSelfMessageHistory(ws.lastMessage.data))
-    }
-  }, [ws.lastMessage])
-
-  if (ws.readyState !== ReadyState.OPEN) {
+  // if (ws.readyState !== ReadyState.OPEN) {
+  if (!socket) {
     return (
       <Typography variant="h6" fontWeight="bold">
         Error in connecting to the chat. Please refresh the page.
@@ -108,7 +129,11 @@ export default function ChatIndexPage() {
           onChange={(e) => setDraftMessage(e.target.value)}
           fullWidth
         />
-        <Button variant="outlined" onClick={handleSendMessage} disabled={isChatDisabled}>
+        <Button
+          variant="outlined"
+          onClick={handleSendMessage}
+          disabled={isChatDisabled}
+        >
           Send
         </Button>
       </Stack>
@@ -127,9 +152,5 @@ const AlternateChatBox = styled(Box)({
 })
 
 function ChatMessage({ message }: { message: string }) {
-  return (
-    <AlternateChatBox>
-      {message}
-    </AlternateChatBox>
-  )
+  return <AlternateChatBox>{message}</AlternateChatBox>
 }

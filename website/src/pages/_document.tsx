@@ -11,7 +11,6 @@ export default function AppDocument() {
   return (
     <Html lang="en">
       <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="robots" content="follow, index" />
         <meta name="description" content={meta.description} />
         {/* PWA primary color */}

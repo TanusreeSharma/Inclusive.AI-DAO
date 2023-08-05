@@ -1,7 +1,9 @@
 import { Button, Stack, Typography } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
+import { getPublicCompressed } from '@toruslabs/eccrypto'
 import type { AppProps } from 'next/app'
 import { Inter } from 'next/font/google'
+import Head from 'next/head'
 import { redirect } from 'next/navigation'
 import { useRouter } from 'next/router'
 import { useContext, useEffect } from 'react'
@@ -35,22 +37,42 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
     // const notUninitiated = web3AuthContext.status !== Web3AuthStatus.UNINITIATED
     const notConnecting = web3AuthContext.status !== Web3AuthStatus.CONNECTING
 
-    if (
-      (!web3AuthContext.provider || !web3AuthContext.user) &&
-      (notConnecting)
-    ) {
+    if ((!web3AuthContext.provider || !web3AuthContext.user) && notConnecting) {
       if (router.pathname !== '/auth') {
         router.replace('/auth')
       }
     }
 
-    if (web3AuthContext.provider && web3AuthContext.user && !userProfile.email) {
-      dispatch(updateProfile({
-        email: web3AuthContext.user.email || '',
-        id: web3AuthContext.user.verifierId || '',
-        name: web3AuthContext.user.name || '',
-      }))
-      dispatch(updateJwtToken(web3AuthContext.user.oAuthAccessToken || web3AuthContext.user.idToken || ''))
+    if (
+      web3AuthContext.provider &&
+      web3AuthContext.user &&
+      !userProfile.email
+    ) {
+      dispatch(
+        updateProfile({
+          email: web3AuthContext.user.email || '',
+          id: web3AuthContext.user.verifierId || '',
+          name: web3AuthContext.user.name || '',
+        }),
+      )
+      dispatch(
+        updateJwtToken(
+          web3AuthContext.user.oAuthAccessToken ||
+            web3AuthContext.user.idToken ||
+            '',
+        ),
+      )
+
+      const getPubkey = async () => {
+        const privKey: any = await web3AuthContext.provider!!.request({
+          method: 'eth_private_key',
+        })
+        const pubkey = getPublicCompressed(
+          Buffer.from(privKey, 'hex'),
+        ).toString('hex')
+        console.log('pubkey', pubkey)
+      }
+      getPubkey()
     }
   }, [web3AuthContext, userProfile])
 
@@ -60,7 +82,12 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
         {/* <Typography variant="h6" fontWeight="bold" pb={2}>
           Auth Page
         </Typography> */}
-        <Button variant="outlined" size="large" onClick={web3AuthContext.login} sx={{ width: 200 }}>
+        <Button
+          variant="outlined"
+          size="large"
+          onClick={web3AuthContext.login}
+          sx={{ width: 200 }}
+        >
           Sign Up / Sign In
         </Button>
       </Stack>
@@ -87,19 +114,25 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <StoreProvider store={store}>
-      <ThemeProvider theme={customTheme}>
-        <Web3AuthProvider>
-          <MainLayout className={inter.className}>
-            <Web3AuthGatedLayout>
-              <Topbar />
-              <BodyLayout>
-                <Component {...pageProps} />
-              </BodyLayout>
-            </Web3AuthGatedLayout>
-          </MainLayout>
-        </Web3AuthProvider>
-      </ThemeProvider>
-    </StoreProvider>
+    <>
+      <Head>
+        {/* viewport can't be in _document.tsx, per https://nextjs.org/docs/messages/no-document-viewport-meta */}
+        <meta name="viewport" content="viewport-fit=cover" />
+      </Head>
+      <StoreProvider store={store}>
+        <ThemeProvider theme={customTheme}>
+          <Web3AuthProvider>
+            <MainLayout className={inter.className}>
+              <Web3AuthGatedLayout>
+                <Topbar />
+                <BodyLayout>
+                  <Component {...pageProps} />
+                </BodyLayout>
+              </Web3AuthGatedLayout>
+            </MainLayout>
+          </Web3AuthProvider>
+        </ThemeProvider>
+      </StoreProvider>
+    </>
   )
 }
