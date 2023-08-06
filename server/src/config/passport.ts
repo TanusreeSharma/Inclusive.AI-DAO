@@ -29,19 +29,36 @@ const jwtStrategyFunction = async (
   callback: (err: ApiError, user: string) => any
 ) => {
   try {
-    // Passed from the frontend Web3Auth in the request param or body
-    console.log(req.params, req.body)
-    if (!req.params.appPubkey && !req.body.appPubkey) throw new ApiError(httpStatus.BAD_REQUEST, 'Missing appPubkey')
-    const { appPubkey } = req.body || req.params
+    // console.log(req.query, req.params, req.body)
 
-    const idToken = getBearerTokenFromHeaders(req) // Web3Auth JWT (`idToken` on frontend)
+    // `appPubkey` passed in from the frontend Web3Auth in the request param or body
+    let appPubkey = undefined
+    if (req.method === 'GET') appPubkey = req.params?.appPubkey || req.query?.appPubkey
+    else if (req.method === 'POST') appPubkey = req.body?.appPubkey
 
-    // Get the JWK set used to sign the JWT issued by Web3Auth
-    const jwks = jose.createRemoteJWKSet(new URL('https://api.openlogin.com/jwks'))
+    if (!appPubkey) throw new ApiError(httpStatus.BAD_REQUEST, 'Missing parameter `appPubkey`')
+
+    // Retrieve Bearer Token from Headers (ie. Authorization: 'Bearer {token}')
+    let idToken: string = ''
+    try {
+      idToken = getBearerTokenFromHeaders(req) // Web3Auth JWT (`idToken` on frontend)
+      if (!idToken) throw new Error('') // caught below & formatted
+    } catch (err) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid bearer token')
+    }
+
+    // Get the JWK set used to sign the JWT issued by Web3Auth (that uses openlogin) (one-time)
+    // TODO: cache this JWT returned from the API to avoid calling this API every time
+    //      => Question: Does `jose` package cache this for us already?
+    const appJwks = jose.createRemoteJWKSet(new URL('https://api.openlogin.com/jwks'))
 
     // Verify the JWT using Web3Auth's JWKS
-    const jwtDecoded = await jose.jwtVerify(idToken, jwks, { algorithms: ['ES256'] })
-    console.log(jwtDecoded)
+    let jwtDecoded: jose.JWTVerifyResult & jose.ResolvedKey<jose.KeyLike>
+    try {
+      jwtDecoded = await jose.jwtVerify(idToken, appJwks, { algorithms: ['ES256'] }) // issuer: 'https://openlogin.com'
+    } catch (err) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid jwt')
+    }
 
     // Checking `appPubkey` against the decoded JWT wallet's public_key
     // (note `wallet` type (for Web3Auth) is not in the `jose` package, so we use `any`)
@@ -52,10 +69,9 @@ const jwtStrategyFunction = async (
       callback(null, userId)
     } else {
       // Not verified (need to be in else so that it's not called if `if` condition is met)
-      callback(new ApiError(httpStatus.UNAUTHORIZED, 'Invalid user credentials'), null)
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid user credentials')
     }
   } catch (e) {
-    // console.log(e);
     if (e instanceof ApiError) {
       //  || e instanceof jwt.JsonWebTokenError || e instanceof jwt.NotBeforeError || e instanceof jwt.TokenExpiredError
       callback(e, null)

@@ -1,14 +1,14 @@
 import { JsonController, Authorized, Param, BodyParam, Get, Post, UseAfter } from 'routing-controllers'
 
 import { openai } from '@/config'
-import { FinalSay } from '@/middleware'
+import { FinalSayMiddleware } from '@/middleware'
 import { GptChatDialogue } from '@/types'
 
 // import type { ChatCompletionRequestMessage } from 'openai'
 
 @JsonController('/ai')
 @Authorized()
-@UseAfter(FinalSay)
+// @UseAfter(FinalSayMiddleware)
 export default class AiChatController {
   @Post('/chat')
   async chatAI(@BodyParam('dialogues') dialogues: GptChatDialogue[]) {

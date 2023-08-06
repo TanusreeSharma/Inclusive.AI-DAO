@@ -10,10 +10,11 @@ const envVarsSchema = Joi.object()
 
     OPENAI_API_KEY: Joi.string().required().description('OpenAI API key'),
 
-    // POSTGRES_HOST: Joi.string().required().default('localhost'),
-    // POSTGRES_USER: Joi.string().required().default('postgres'),
-    // POSTGRES_PASSWORD: Joi.string().required(),
-    // POSTGRES_DB: Joi.string().required().description('Database name to connect'),
+    POSTGRES_HOST: Joi.string().required().description('PostgreSQL db host'), // .default('localhost'),
+    POSTGRES_USER: Joi.string().required().description('PostgreSQL db user'), // .default('postgres'),
+    POSTGRES_PASSWORD: Joi.string().required().description('PostgreSQL db user password'),
+    POSTGRES_DB: Joi.string().required().description('PostgreSQL db name to connect'),
+    POSTGRES_PORT: Joi.number().default(5432).description('PostgreSQL db port, default 5432'),
 
     JWT_RANDOM_SECRET: Joi.string().required().description('SHA512 for jwt')
   })

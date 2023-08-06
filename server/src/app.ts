@@ -1,17 +1,19 @@
 import 'es6-shim'
-import 'reflect-metadata' // for routing-controllers
+import 'reflect-metadata' // make @decorators work properly (for `routing-controllers` and `typeorm`)
 
 import compression from 'compression'
 import express from 'express'
 import { createServer } from 'http'
 import path from 'path'
 import passport from 'passport'
-// import morgan from 'morgan'
+import morgan from 'morgan'
 import { Action, useExpressServer } from 'routing-controllers'
 
-import { envVars, jwtStrategy } from '@/config'
+import { envVars, jwtStrategy, morganLogger } from '@/config'
+import AppDataSource from '@/database/data-source'
 import { createAndAttachSocketIo } from '@/socket'
 import { ApiError } from '@/utils'
+import { CustomErrorHandler, JwtAuthMiddleware } from './middleware'
 
 // Custom JWT strategy
 passport.use('jwt', jwtStrategy)
@@ -26,7 +28,12 @@ let app = express()
 useExpressServer(app, {
   cors: true,
   controllers: [path.join(__dirname + '/controllers/*.controller.ts')],
-  middlewares: [path.join(__dirname + '/middleware/*.middleware.ts')],
+  // middlewares: [path.join(__dirname + '/middleware/*.middleware.ts')],
+  middlewares: [
+    CustomErrorHandler,
+    // JwtAuthMiddleware,
+  ],
+  defaultErrorHandler: false, // use custom error handler
   authorizationChecker: (action: Action) =>
     new Promise<boolean>((resolve, reject) => {
       passport.authenticate('jwt', (err: ApiError, user: string) => {
@@ -45,10 +52,24 @@ const httpServer = createServer(app)
 createAndAttachSocketIo(httpServer)
 
 //
-// Attach legacy middlewares & start
+// Set up TypeORM
 //
 
-// app.use(compression)
+// Register all entities (in `data-source.ts`) and "synchronize" database schema, then call
+// `initialize()` method of a newly created database to initialize initial connection with db
+// AppDataSource.initialize()
+//   .then(() => {
+//     // here you can start to work with your database
+//     console.log(`Database connected to ${envVars.POSTGRES_HOST}; DB: ${envVars.POSTGRES_DB}`)
+//   })
+//   .catch((error) => console.log(error))
+
+//
+// Attach extra middlewares & start
+//
+
+app.use(compression)
+app.use(morganLogger)
 
 httpServer.listen(envVars.PORT, function () {
   console.log(`Listening on port ${envVars.PORT}`)

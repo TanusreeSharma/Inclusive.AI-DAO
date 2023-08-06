@@ -1,15 +1,38 @@
-import { JsonController, Authorized, Param, Body, Get, Post, Put, UseAfter } from 'routing-controllers'
+import {
+  Authorized,
+  Param,
+  Body,
+  Get,
+  JsonController,
+  Post,
+  Put,
+  SessionParam,
+  UseAfter,
+  UseBefore
+} from 'routing-controllers'
 
-import { FinalSay } from '@/middleware'
+import { FinalSayMiddleware, JwtAuthMiddleware } from '@/middleware'
+import AppDataSource from '@/database/data-source'
+import { Profile } from '@/database/entity'
 
-@JsonController()
+@JsonController('/user')
 @Authorized()
-@UseAfter(FinalSay)
+// @UseAfter(FinalSayMiddleware)
 export default class UserController {
-  // @Get('/users')
-  // getAll() {
-  //   return 'This action returns all users'
-  // }
+  @Get('/profile') // GET '/user/profile'
+  @UseBefore(JwtAuthMiddleware)
+  getUserProfile(@Param('user') user: string) {
+    return AppDataSource.getRepository(Profile)
+      .createQueryBuilder("profile")
+      .where("profile.user = :userId", { userId: user })
+  }
+
+  @Post('/profile') // POST '/user/profile'
+  @UseBefore(JwtAuthMiddleware)
+  createUserProfile(@Body() body: any) {
+    return 'This action returns all users'
+  }
+
   // @Get('/users/:id')
   // getOne(@Param('id') id: number) {
   //   return 'This action returns user #' + id

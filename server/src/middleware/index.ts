@@ -1,2 +1,3 @@
-export { default as FinalSay } from './FinalSay.middleware'
-export { default as MorganLogger } from './MorganLogger.middleware'
+export * from './CustomError.middleware'
+export * from './FinalSay.middleware'
+export * from './JwtAuth.middleware'
