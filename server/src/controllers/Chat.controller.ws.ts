@@ -1,13 +1,20 @@
-import { OnConnect, SocketController, ConnectedSocket, OnDisconnect, MessageBody, Middleware, OnMessage } from 'socket-controllers'
+import {
+  OnConnect,
+  SocketController,
+  ConnectedSocket,
+  OnDisconnect,
+  MessageBody,
+  NspParams,
+  OnMessage
+} from 'socket-controllers'
 
-import AuthenticationMiddleware from '@/middleware/Auth.middleware.ws'
-
-class ChatMessage {
-  id: number
-  text: string
+type ChatMessage = {
+  userName: number
+  userId: string
+  message: string
 }
 
-@SocketController('/chat')
+@SocketController('/socket/chat')
 export default class ChatController {
   @OnConnect()
   connection(@ConnectedSocket() socket: any) {
@@ -19,11 +26,36 @@ export default class ChatController {
     console.log('client disconnected')
   }
 
+  @OnMessage('chat')
+  chatSelf(@ConnectedSocket() socket: any, @MessageBody() msg: ChatMessage, @NspParams() params: any[]) {
+    console.log('received message:', msg)
+    console.log('received params:', params)
+
+    socket.emit('chat_message', {
+      username: msg.userName,
+      message: msg.message
+    })
+  }
+}
+
+@SocketController('/socket/messages/:id')
+export class MessageController {
+  @OnConnect()
+  connection(@ConnectedSocket() socket: any) {
+    console.log('client connected');
+  }
+
+  @OnDisconnect()
+  disconnect(@ConnectedSocket() socket: any) {
+    console.log('client disconnected');
+  }
+
   @OnMessage('save')
-  save(@ConnectedSocket() socket: any, @MessageBody() message: ChatMessage) {
-    console.log('received message:', message)
-    console.log('setting id to the message and sending it back to the client')
-    message.id = 1
-    socket.emit('message_saved', message)
+  async save(@ConnectedSocket() socket: any, @MessageBody() message: any, @NspParams() params: any[]) {
+    console.log('received message:', message);
+    console.log('namespace params:', params);
+    console.log('setting id to the message and sending it back to the client');
+    message.id = 1;
+    socket.emit('message_saved', message);
   }
 }

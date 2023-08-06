@@ -8,13 +8,10 @@ import path from 'path'
 import passport from 'passport'
 // import morgan from 'morgan'
 import { Action, useExpressServer } from 'routing-controllers'
-import { SocketControllers } from 'socket-controllers'
-import { Server as SocketIoServer } from 'socket.io'
-import { Container } from 'typedi'
 
 import { envVars, jwtStrategy } from '@/config'
+import { createAndAttachSocketIo } from '@/socket'
 import { ApiError } from '@/utils'
-import ChatController from './controllers/Chat.controller.ws'
 
 // Custom JWT strategy
 passport.use('jwt', jwtStrategy)
@@ -33,7 +30,7 @@ useExpressServer(app, {
   authorizationChecker: (action: Action) =>
     new Promise<boolean>((resolve, reject) => {
       passport.authenticate('jwt', (err: ApiError, user: string) => {
-        console.log(err, user)
+        // console.log(err, user)
         if (err) return reject(err)
         if (!user) return resolve(false)
 
@@ -45,26 +42,13 @@ useExpressServer(app, {
 })
 
 const httpServer = createServer(app)
-const socketIo = new SocketIoServer(httpServer)
-
-// socketIo.use((socket: any, next: Function) => {
-//   console.log('Custom middleware')
-//   next()
-// })
-
-new SocketControllers({
-  io: socketIo,
-  // port: envVars.PORT,
-  container: Container,
-  controllers: [path.join(__dirname + '/controllers/*.controller.ws.ts')],
-  middlewares: [path.join(__dirname + '/middleware/*.middleware.ws.ts')]
-})
+createAndAttachSocketIo(httpServer)
 
 //
 // Attach legacy middlewares & start
 //
 
-app.use(compression)
+// app.use(compression)
 
 httpServer.listen(envVars.PORT, function () {
   console.log(`Listening on port ${envVars.PORT}`)
