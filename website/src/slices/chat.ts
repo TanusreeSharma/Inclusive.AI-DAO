@@ -2,10 +2,11 @@ import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 
 import type { RootState } from '@/store'
+import type { GptChatDialogue } from '@/types'
 
 export interface ChatState {
   self: {
-    messageHistory: string[]
+    messageHistory: GptChatDialogue[]
   }
 }
 
@@ -23,7 +24,7 @@ export const chatSlice = createSlice({
     clearSelfMessageHistory: (state) => {
       state.self.messageHistory = []
     },
-    addSelfMessageHistory: (state, action: PayloadAction<string>) => { // MessageEvent<any>.data
+    addSelfMessageHistory: (state, action: PayloadAction<GptChatDialogue>) => { // MessageEvent<any>.data
       state.self.messageHistory.push(action.payload)
     },
   },

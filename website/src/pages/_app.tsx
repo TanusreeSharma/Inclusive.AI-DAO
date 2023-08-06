@@ -19,7 +19,12 @@ import Web3AuthProvider, {
 import Topbar from '@/components/Topbar'
 import { useAppDispatch, useAppSelector } from '@/hooks'
 import { BodyLayout, MainLayout } from '@/layouts'
-import { selectProfile, updateJwtToken, updateProfile } from '@/slices/profile'
+import {
+  selectProfile,
+  updateJwtToken,
+  updateProfile,
+  updatePubKey,
+} from '@/slices/profile'
 import store from '@/store'
 import customTheme from '@/theme'
 
@@ -55,6 +60,7 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
           name: web3AuthContext.user.name || '',
         }),
       )
+
       dispatch(
         updateJwtToken(
           web3AuthContext.user.oAuthAccessToken ||
@@ -70,7 +76,8 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
         const pubkey = getPublicCompressed(
           Buffer.from(privKey, 'hex'),
         ).toString('hex')
-        console.log('pubkey', pubkey)
+
+        dispatch(updatePubKey(pubkey))
       }
       getPubkey()
     }

@@ -1,58 +1,98 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>WebSocket Chat</title>
+    </head>
 
-<head>
-    <meta charset="UTF-8">
-    <title>WebSocket Chat</title>
-</head>
+    <body>
+        <h1>WebSocket Chat Example</h1>
 
-<body>
-    <h1>WebSocket Chat Example</h1>
+        <input
+            id="username"
+            style="display: block; width: 100px; box-sizing: border-box"
+            type="text"
+            placeholder="username"
+        />
+        <input
+            id="channel"
+            style="display: block; width: 100px; box-sizing: border-box"
+            type="text"
+            placeholder="channel"
+        />
+        <button id="join-chat" type="button">Join Chat</button>
+        <textarea
+            id="chat"
+            style="
+                display: block;
+                width: 600px;
+                height: 400px;
+                box-sizing: border-box;
+            "
+            cols="30"
+            rows="10"
+        ></textarea>
+        <input
+            id="input"
+            style="display: block; width: 600px; box-sizing: border-box"
+            type="text"
+            placeholder="chat"
+        />
 
-    <input id="username" style="display:block; width:100px; box-sizing: border-box" type="text" placeholder="username">
-    <input id="channel" style="display:block; width:100px; box-sizing: border-box" type="text" placeholder="channel">
-    <button id="join-chat" type="button">Join Chat</button>
-    <textarea id="chat" style="display:block; width:600px; height:400px; box-sizing: border-box" cols="30"
-        rows="10"></textarea>
-    <input id="input" style="display:block; width:600px; box-sizing: border-box" type="text" placeholder="chat">
+        <script src="./node_modules/socket.io-client/dist/socket.io.js"></script>
+        <script>
+            const username = document.querySelector('#username')
+            const channel = document.querySelector('#channel')
+            const join_btn = document.querySelector('#join-chat')
+            const textarea = document.querySelector('#chat')
+            const input = document.querySelector('#input')
 
-    <script>
-        const username = document.querySelector("#username");
-        const channel = document.querySelector('#channel');
-        const join_btn = document.querySelector("#join-chat");
-        const textarea = document.querySelector("#chat");
-        const input = document.querySelector("#input");
+            const socket = io('http://localhost:8080/chat', {
+              path: '/socket', // server opened at `/socket`
+              transports: ['websocket'],
+            })
+            // const socket = new WebSocket('ws://localhost:3000/websocket')
 
-        join_btn.addEventListener("click", function (e) {
-            this.disabled = true;
+            socket.on('connection', function (message) {
+                console.log('Connected')
+            })
 
-            const websocket = new WebSocket("ws://localhost:3000/websocket");
+            socket.on('message_saved', function (message) {
+                console.log('Saved message received back: ', message)
+            })
 
-            websocket.onopen = function () {
-                console.log("connection opened");
-                websocket.send(JSON.stringify({ username: username.value, channel: channel.value }));
-            }
+            join_btn.addEventListener('click', function (e) {
+                this.disabled = true
 
-            const btn = this;
-
-            websocket.onclose = function () {
-                console.log("connection closed");
-                btn.disabled = false;
-            }
-
-            websocket.onmessage = function (e) {
-                console.log("received message: " + e.data);
-                textarea.value += e.data + "\r\n";
-            }
-
-            input.onkeydown = function (e) {
-                if (e.key == "Enter") {
-                    websocket.send(input.value);
-                    input.value = "";
+                socket.onopen = function () {
+                    console.log('connection opened')
+                    // socket.send(
+                    //     JSON.stringify({
+                    //         username: username.value,
+                    //         channel: channel.value,
+                    //     }),
+                    // )
                 }
-            }
-        });
-    </script>
-</body>
 
+                const btn = this
+
+                socket.onclose = function () {
+                    console.log('connection closed')
+                    btn.disabled = false
+                }
+
+                socket.onmessage = function (e) {
+                    console.log('received message: ' + e.data)
+                    textarea.value += e.data + '\r\n'
+                }
+
+                input.onkeydown = function (e) {
+                    if (e.key == 'Enter') {
+                        socket.emit('chat', { text: input.value })
+                        input.value = ''
+                    }
+                }
+            })
+        </script>
+    </body>
 </html>
