@@ -39,7 +39,8 @@ function NavbarLinkPill(props: NavbarLinkPillProps) {
 
 export default function Navbar() {
   return (
-    <Stack direction="column" spacing={1} width={240}>
+    <Stack direction="column" spacing={1} width={260}>
+      <NavbarLinkPill href="/home" label="Home" />
       <NavbarLinkPill href="/chat" label="Chat" />
       <NavbarLinkPill href="/profile" label="Profile" />
       <ShadowedBox>

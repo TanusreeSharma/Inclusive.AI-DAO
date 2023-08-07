@@ -7,6 +7,7 @@ export interface ProfileState {
   email: string
   id: string
   name: string
+  pfp: string // profile picture
   jwtToken: string
   pubKey: string
   // assigned pod
@@ -18,6 +19,7 @@ const initialState: ProfileState = {
   email: '',
   id: '',
   name: '',
+  pfp: '',
   jwtToken: '',
   pubKey: '',
   pod: '',
@@ -27,10 +29,16 @@ export const profileSlice = createSlice({
   name: 'profile',
   initialState,
   reducers: {
-    updateProfile: (state, action: PayloadAction<Pick<ProfileState, 'email' | 'id' | 'name'>>) => {
+    updateProfile: (
+      state,
+      action: PayloadAction<
+        Pick<ProfileState, 'email' | 'id' | 'name' | 'pfp'>
+      >,
+    ) => {
       state.email = action.payload.email
       state.id = action.payload.id
       state.name = action.payload.name
+      state.pfp = action.payload.pfp
     },
     updateJwtToken: (state, action: PayloadAction<string>) => {
       state.jwtToken = action.payload
@@ -50,7 +58,14 @@ export const profileSlice = createSlice({
   },
 })
 
-export const { updateProfile, updateJwtToken, updatePubKey, updateEmail, updateId, updateName } = profileSlice.actions
+export const {
+  updateProfile,
+  updateJwtToken,
+  updatePubKey,
+  updateEmail,
+  updateId,
+  updateName,
+} = profileSlice.actions
 
 export const selectProfile = (state: RootState) => state.profile
 export const selectJwtToken = (state: RootState) => state.profile.jwtToken

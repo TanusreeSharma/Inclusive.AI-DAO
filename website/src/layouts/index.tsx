@@ -14,7 +14,7 @@ export function MainLayout({
       className={className}
       pt={8}
       pb={3}
-      px={8}
+      px={6}
     >
       {children}
     </Box>

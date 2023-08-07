@@ -13,7 +13,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (web3AuthContext.provider && web3AuthContext.user) {
-      router.replace('/profile')
+      router.replace('/')
     }
   }, [web3AuthContext])
 

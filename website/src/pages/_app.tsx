@@ -58,6 +58,7 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
           email: web3AuthContext.user.email || '',
           id: web3AuthContext.user.verifierId || '',
           name: web3AuthContext.user.name || '',
+          pfp: web3AuthContext.user.profileImage || '',
         }),
       )
 
@@ -80,6 +81,8 @@ function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
         dispatch(updatePubKey(pubkey))
       }
       getPubkey()
+
+      // dispatch(getUserPod)
     }
   }, [web3AuthContext, userProfile])
 

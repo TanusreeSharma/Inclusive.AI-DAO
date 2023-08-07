@@ -5,9 +5,11 @@ import Router from 'next/router'
 import { useEffect, useState } from 'react'
 
 export default function IndexPage() {
-  useEffect(() => {
-    Router.push('/chat')
-  })
-
-  return <></>
+  return (
+    <>
+      <Typography variant="h6" fontWeight="bold" pb={2}>
+        Home
+      </Typography>
+    </>
+  )
 }
