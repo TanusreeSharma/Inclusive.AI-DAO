@@ -29,6 +29,10 @@ const jwtStrategyFunction = async (
   callback: (err: ApiError, user: string) => any
 ) => {
   try {
+    //
+    // For some reason, req.body is only available if @Body() or @Body({ required: true } is set in controller routes
+    //
+
     // console.log(req.query, req.params, req.body)
 
     // `appPubkey` passed in from the frontend Web3Auth in the request param or body

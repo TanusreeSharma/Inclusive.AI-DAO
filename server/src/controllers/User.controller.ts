@@ -8,29 +8,71 @@ import {
   Put,
   SessionParam,
   UseAfter,
-  UseBefore
+  UseBefore,
+  CurrentUser
 } from 'routing-controllers'
 
-import { FinalSayMiddleware, JwtAuthMiddleware } from '@/middleware'
 import AppDataSource from '@/database/data-source'
-import { Profile } from '@/database/entity'
+import { Profile, User } from '@/database/entity'
+import { UserRole } from '@/database/entity/User'
+// import { FinalSayMiddleware } from '@/middleware'
+import { CreateUserProfileParams } from '@/types'
+
+type RegisterUserParams = {
+  id: string
+  name: string
+  role: UserRole
+}
 
 @JsonController('/user')
 @Authorized()
 // @UseAfter(FinalSayMiddleware)
 export default class UserController {
   @Get('/profile') // GET '/user/profile'
-  @UseBefore(JwtAuthMiddleware)
-  getUserProfile(@Param('user') user: string) {
-    return AppDataSource.getRepository(Profile)
-      .createQueryBuilder("profile")
-      .where("profile.user = :userId", { userId: user })
+  async getUserProfile(@CurrentUser({ required: true }) user: User) {
+    const profile = await AppDataSource.getRepository(Profile)
+      .createQueryBuilder('profile')
+      .where('profile.user = :userId', { userId: user.id })
+      .getOne()
+      .catch((err) => {
+        if (typeof err?.detail === 'string' && err.detail.includes('does not exist')) {
+          return { is: 'does not exist' }
+        }
+        return { is: 'errored' }
+      })
+
+    if (!profile) return { is: 'not found' }
+    return profile
   }
 
   @Post('/profile') // POST '/user/profile'
-  @UseBefore(JwtAuthMiddleware)
-  createUserProfile(@Body() body: any) {
+  createUserProfile(@Body({ required: true }) body: CreateUserProfileParams) {
     return 'This action returns all users'
+  }
+
+  @Post('/register') // POST '/user/register'
+  async registerUser(@Param('user') userId: string, @Body({ required: true }) body: RegisterUserParams) {
+    // console.log(userId)
+    try {
+      await AppDataSource.createQueryBuilder()
+        .insert()
+        .into(User)
+        .values([
+          {
+            id: userId,
+            name: body.name,
+            role: body.role
+          }
+        ])
+        .execute()
+      return { is: 'registered' }
+    } catch (err: any) {
+      if (typeof err?.detail === 'string' && err.detail.includes('already exists')) {
+        return { is: 'already registered' }
+      }
+      return { is: 'not registered' }
+    }
+    // return { is: 'registered' }
   }
 
   // @Get('/users/:id')

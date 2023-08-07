@@ -1,6 +1,7 @@
-import { BaseEntity, Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
+import { BaseEntity, Column, CreateDateColumn, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
 
 import { User } from '@/database/entity'
+import { CreateUserProfileParams } from '@/types'
 
 export type ProfileAgeRange = '18_24' | '25_34' | '45_54' | '55_64' | '65_up'
 
@@ -70,10 +71,11 @@ export class Profile extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: string
 
-  @Column('datetime')
-  created: number
+  @CreateDateColumn({ type: 'timestamp' })
+  createdAt: number
 
   @OneToOne((type) => User, (user) => user.profile)
+  @JoinColumn() // Profile owns the relationship, have a foreign key column named `user`
   user: User
 
   //
@@ -109,7 +111,8 @@ export class Profile extends BaseEntity {
   genderIdentity: ProfileGenderIdentity
 
   @Column({
-    type: 'tinytext',
+    type: 'varchar',
+    length: 255,
     nullable: true
   })
   genderIdentityOther: string
@@ -148,14 +151,18 @@ export class Profile extends BaseEntity {
   ethnicBackground: ProfileEthnicBackground
 
   @Column({
-    type: 'tinytext',
+    type: 'varchar',
+    length: 255,
     nullable: true
   })
   ethnicBackgroundOther: string
 
   // What country are you currently residing in?
   // __________________ (open-ended text)
-  @Column('tinytext')
+  @Column({
+    type: 'varchar',
+    length: 255
+  })
   countryResideIn: string
 
   // Are you currently enrolled in any educational institution?
@@ -192,7 +199,8 @@ export class Profile extends BaseEntity {
   employmentStatus: ProfileEmploymentStatus
 
   @Column({
-    type: 'tinytext',
+    type: 'varchar',
+    length: 255,
     nullable: true
   })
   employmentStatusOther: string
@@ -235,7 +243,8 @@ export class Profile extends BaseEntity {
   language: ProfileLanguage
 
   @Column({
-    type: 'tinytext',
+    type: 'varchar',
+    length: 255,
     nullable: true
   })
   languageOther: string
@@ -249,48 +258,28 @@ export class Profile extends BaseEntity {
   @Column('text')
   studyHearAbout: string
 
-  static async createProfileForUser(data: {
-    user: User
-    ageRange: ProfileAgeRange
-    genderIdentity: ProfileGenderIdentity
-    genderIdentityOther: string
-    hasVisualImpairment: boolean
-    visionLevel: ProfileVisionLevel
-    ethnicBackground: ProfileEthnicBackground
-    ethnicBackgroundOther: string
-    countryResideIn: string
-    isEnrolledInEducation: boolean
-    highestLevelEducation: ProfileEducationLevel
-    employmentStatus: ProfileEmploymentStatus
-    employmentStatusOther: string
-    deviceUsageFrequency: ProfileDeviceUsageFrequency
-    householdIncome: ProfileHouseholdIncome
-    language: ProfileLanguage
-    languageOther: string
-    fromGlobalSouth: boolean
-    studyHearAbout: string
-  }): Promise<Profile> {
+  static async createProfileForUser(params: CreateUserProfileParams): Promise<Profile> {
     const profile = new Profile()
 
-    profile.created = Date.now()
-    profile.ageRange = data.ageRange
-    profile.genderIdentity = data.genderIdentity
-    profile.genderIdentityOther = data.genderIdentityOther
-    profile.hasVisualImpairment = data.hasVisualImpairment
-    profile.visionLevel = data.visionLevel
-    profile.ethnicBackground = data.ethnicBackground
-    profile.ethnicBackgroundOther = data.ethnicBackgroundOther
-    profile.countryResideIn = data.countryResideIn
-    profile.isEnrolledInEducation = data.isEnrolledInEducation
-    profile.highestLevelEducation = data.highestLevelEducation
-    profile.employmentStatus = data.employmentStatus
-    profile.employmentStatusOther = data.employmentStatusOther
-    profile.deviceUsageFrequency = data.deviceUsageFrequency
-    profile.householdIncome = data.householdIncome
-    profile.language = data.language
-    profile.languageOther = data.languageOther
-    profile.fromGlobalSouth = data.fromGlobalSouth
-    profile.studyHearAbout = data.studyHearAbout
+    profile.createdAt = Date.now()
+    profile.ageRange = params.ageRange
+    profile.genderIdentity = params.genderIdentity
+    profile.genderIdentityOther = params.genderIdentityOther
+    profile.hasVisualImpairment = params.hasVisualImpairment
+    profile.visionLevel = params.visionLevel
+    profile.ethnicBackground = params.ethnicBackground
+    profile.ethnicBackgroundOther = params.ethnicBackgroundOther
+    profile.countryResideIn = params.countryResideIn
+    profile.isEnrolledInEducation = params.isEnrolledInEducation
+    profile.highestLevelEducation = params.highestLevelEducation
+    profile.employmentStatus = params.employmentStatus
+    profile.employmentStatusOther = params.employmentStatusOther
+    profile.deviceUsageFrequency = params.deviceUsageFrequency
+    profile.householdIncome = params.householdIncome
+    profile.language = params.language
+    profile.languageOther = params.languageOther
+    profile.fromGlobalSouth = params.fromGlobalSouth
+    profile.studyHearAbout = params.studyHearAbout
 
     return profile.save()
   }

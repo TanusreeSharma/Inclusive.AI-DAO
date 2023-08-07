@@ -1,4 +1,4 @@
-import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
+import { BaseEntity, Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
 
 import { AiResponse, User } from '@/database/entity'
 
@@ -13,8 +13,8 @@ export class Chat extends BaseEntity {
   @Column()
   channel: string
 
-  @Column('datetime')
-  created: number
+  @CreateDateColumn({ type: 'timestamp' })
+  createdAt: number
 
   @ManyToOne((type) => User, (user) => user.chats)
   // @JoinColumn() // Chat owns the relationship, this column is foreign key (for many-to-one, owner side is always many-to-one)

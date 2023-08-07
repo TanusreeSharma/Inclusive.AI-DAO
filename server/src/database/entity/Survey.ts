@@ -1,4 +1,4 @@
-import { BaseEntity, Column, Entity, JoinColumn, PrimaryGeneratedColumn, ManyToOne } from 'typeorm'
+import { BaseEntity, Column, CreateDateColumn, Entity, JoinColumn, PrimaryGeneratedColumn, ManyToOne } from 'typeorm'
 
 import { User } from '@/database/entity'
 
@@ -13,8 +13,8 @@ export class Survey extends BaseEntity {
   @Column('int')
   stage: number
 
-  @Column('datetime')
-  created: number
+  @CreateDateColumn({ type: 'timestamp' })
+  createdAt: number
 
   @ManyToOne((type) => User, (user) => user.surveys)
   // @JoinColumn() // Survey owns the relationship, this column is foreign key (for many-to-one, owner side is always many-to-one)
