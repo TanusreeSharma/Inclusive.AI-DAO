@@ -7,7 +7,7 @@ import {
 } from '@web3auth/base'
 import { Web3Auth } from '@web3auth/modal'
 import { OpenloginAdapter } from '@web3auth/openlogin-adapter'
-import { LOGIN_MODAL_EVENTS } from '@web3auth/ui'
+// import { LOGIN_MODAL_EVENTS } from '@web3auth/ui'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
@@ -15,13 +15,11 @@ import {
   openloginAdapterConfig,
   web3AuthConfig,
 } from '@/config/web3auth'
-import { useAppDispatch } from '@/hooks'
-import {
-  // selectWeb3AuthCache,
-  // setWeb3AuthCache,
-  // unsetWeb3AuthCache,
-  setUserJwtToken
-} from '@/slices/app'
+import { useAppDispatch, useAppSelector } from '@/hooks'
+import { useGetUserQuery } from '@/services/user'
+import { setUserJwtToken } from '@/slices/app'
+import { selectUserData } from '@/slices/user'
+import { UserPod, UserProfile } from '@/types'
 
 export enum Web3AuthStatus {
   CONNECTING = 'CONNECTING',
@@ -33,12 +31,22 @@ export enum Web3AuthStatus {
 
 export type Web3AuthExtendedUser = Partial<UserInfo> & { appPubkey: string }
 
+export type Web3AuthStatusExtended = Web3AuthStatus | 'NOT_READY'
+
 export type Web3AuthProviderData = {
+  isReady: boolean
+  isAuthenticated: boolean
+  isLoading: boolean
+  isFetching: boolean
+  isError: boolean
+  userPod: UserPod | undefined
+  userProfile: UserProfile | undefined
+  // normal web3auth stuff
   web3auth: Web3Auth | undefined
   provider: SafeEventEmitterProvider | undefined
   providerData: CONNECTED_EVENT_DATA | undefined
   user: Web3AuthExtendedUser | undefined
-  status: Web3AuthStatus | undefined
+  status: Web3AuthStatusExtended | undefined
   onSuccessfulLogin: (
     web3auth: Web3Auth,
     data: CONNECTED_EVENT_DATA,
@@ -48,24 +56,22 @@ export type Web3AuthProviderData = {
   logout: () => void
 }
 
-// for redux persistent state
-// export type CacheableWeb3AuthProviderData = Pick<
-//   Web3AuthProviderData,
-//   'provider' | 'user'
-// >
-
 export const Web3AuthProviderContext =
   React.createContext<Web3AuthProviderData>({
+    isReady: false,
+    isAuthenticated: false,
+    isLoading: true,
+    isFetching: true,
+    isError: false,
+    userPod: undefined,
+    userProfile: undefined,
+    // normal web3auth stuff
     web3auth: undefined,
     provider: undefined,
     providerData: undefined,
     user: undefined,
     status: Web3AuthStatus.UNINITIATED,
-    onSuccessfulLogin: (
-      web3auth: Web3Auth,
-      data: CONNECTED_EVENT_DATA,
-      user: Web3AuthExtendedUser,
-    ) => {},
+    onSuccessfulLogin: () => {},
     login: () => {},
     logout: () => {},
   })
@@ -74,15 +80,7 @@ export default function Web3AuthProvider({
   children,
 }: React.PropsWithChildren) {
   const dispatch = useAppDispatch()
-
-  // Web3Auth cache
-  // const web3AuthCache = useAppSelector(selectWeb3AuthCache)
-
-  // Web3Auth states (might be loaded from cache while fetching is in progress)
-  // const [provider, setProvider] = useState<
-  //   SafeEventEmitterProvider | undefined
-  // >(web3AuthCache.provider)
-  // const [user, setUser] = useState<Web3AuthExtendedUser | undefined>(web3AuthCache.user)
+  const userData = useAppSelector(selectUserData)
 
   const [provider, setProvider] = useState<
     SafeEventEmitterProvider | undefined
@@ -92,9 +90,22 @@ export default function Web3AuthProvider({
     CONNECTED_EVENT_DATA | undefined
   >(undefined)
   const [web3auth, setWeb3Auth] = useState<Web3Auth | undefined>(undefined)
-  const [status, setStatus] = useState<Web3AuthStatus>(
+  const [status, setStatus] = useState<Web3AuthStatusExtended>(
     Web3AuthStatus.UNINITIATED,
   )
+  // const [isReady, setIsReady] = useState(false)
+  // const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  const {
+    data: fetchedUserData,
+    // error: fetchErrorUserData,
+    isLoading: isUserDataLoading,
+    isFetching: isUserDataFetching,
+    isError: isUserDataError,
+  } = useGetUserQuery(user?.appPubkey || '', {
+    skip: !user || !user.appPubkey,
+    refetchOnMountOrArgChange: true,
+  })
 
   const onSuccessfulLogin = useCallback(
     (
@@ -115,30 +126,28 @@ export default function Web3AuthProvider({
           const privKey: any = await web3auth.provider.request({
             method: 'eth_private_key',
           })
-          pubkey = getPublicCompressed(Buffer.from(privKey, 'hex')).toString(
-            'hex',
-          )
+          pubkey = getPublicCompressed(
+            Buffer.from(privKey.padStart(64, '0'), 'hex'),
+          ).toString('hex')
         }
 
         setUser({
           ...user,
-          appPubkey: pubkey,
+          appPubkey: pubkey, // without 0x prefix
         })
-
-        // Fetch user profile
       })
     },
-    [],
+    [dispatch],
   )
 
   const login = useCallback(() => {
-    console.log(web3auth)
+    // console.log(web3auth)
     if (!web3auth) return
     web3auth
       .connect()
-      .then((data) => {
+      .then(() => {
         console.log('Login successful!')
-        console.log(data)
+        // console.log(data)
       })
       .catch((err) => {
         console.error('Login failed!')
@@ -158,14 +167,19 @@ export default function Web3AuthProvider({
         console.error('Logout failed!')
         console.error(err)
       })
-  }, [web3auth])
+  }, [dispatch, web3auth])
 
   //
   // Subscribe to Web3Auth auth events
   //
   const subscribeAuthEvents = useCallback(
     (web3auth: Web3Auth) => {
+      console.log('web3auth status', web3auth.status)
       if (!web3auth) return
+
+      if (web3auth.status == ADAPTER_EVENTS.NOT_READY) {
+        setStatus('NOT_READY')
+      }
 
       web3auth.on(ADAPTER_EVENTS.CONNECTED, (data: CONNECTED_EVENT_DATA) => {
         // console.log('Yeah!, you are successfully logged in', data)
@@ -187,7 +201,6 @@ export default function Web3AuthProvider({
 
       web3auth.on(ADAPTER_EVENTS.DISCONNECTED, () => {
         console.log('disconnected')
-        // dispatch(unsetWeb3AuthCache())
         setStatus(Web3AuthStatus.DISCONNECTED)
         setUser(undefined)
         setProvider(undefined)
@@ -195,27 +208,25 @@ export default function Web3AuthProvider({
       })
 
       web3auth.on(ADAPTER_EVENTS.ERRORED, (error) => {
-        // dispatch(unsetWeb3AuthCache())
         setStatus(Web3AuthStatus.ERRORED)
         console.log('some error or user have cancelled login request', error)
       })
 
-      web3auth.on(LOGIN_MODAL_EVENTS.MODAL_VISIBILITY, (isVisible) => {
-        // console.log('modal visibility', isVisible)
+      web3auth.on(ADAPTER_EVENTS.NOT_READY, () => {
+        console.log('not ready')
       })
-    },
-    [onSuccessfulLogin],
-  )
 
-  //
-  // Load cached Web3Auth data
-  //
-  // useEffect(() => {
-  //   if (!web3AuthCache || !web3AuthCache.provider || !web3AuthCache.user) return
-  //   if (status !== Web3AuthStatus.UNINITIATED) return // don't load cache if not uninitiated
-  //   setProvider(web3AuthCache.provider)
-  //   setUser(web3AuthCache.user)
-  // }, [status, web3AuthCache])
+      web3auth.on(ADAPTER_EVENTS.READY, () => {
+        // setStatus(Web3AuthStatus.)
+        console.log('ready')
+      })
+
+      // web3auth.on(LOGIN_MODAL_EVENTS.MODAL_VISIBILITY, (isVisible) => {
+      //   console.log('modal visibility', isVisible)
+      // })
+    },
+    [dispatch, onSuccessfulLogin],
+  )
 
   //
   // Initialize Web3Auth
@@ -231,14 +242,6 @@ export default function Web3AuthProvider({
     setWeb3Auth(newWeb3auth)
     subscribeAuthEvents(newWeb3auth)
 
-    // Rewrite cache
-    // dispatch(
-    //   setWeb3AuthCache({
-    //     provider,
-    //     user,
-    //   }),
-    // )
-
     newWeb3auth.initModal(initModalConfig).catch((err) => {
       console.error(err)
     })
@@ -247,8 +250,8 @@ export default function Web3AuthProvider({
   //
   // Create Web3Auth context
   //
-  const ctx: Web3AuthProviderData = useMemo(
-    () => ({
+  const ctx: Web3AuthProviderData = useMemo(() => {
+    const base = {
       web3auth,
       provider,
       providerData,
@@ -257,18 +260,71 @@ export default function Web3AuthProvider({
       onSuccessfulLogin,
       login,
       logout,
-    }),
-    [
-      login,
-      logout,
-      onSuccessfulLogin,
-      provider,
-      providerData,
-      status,
-      user,
-      web3auth,
-    ],
-  )
+    }
+
+    // console.log('isUserDataLoading', isUserDataLoading)
+    // console.log('isUserDataFetching', isUserDataFetching)
+    // console.log('isUserDataError', isUserDataError)
+
+    // console.log('first', isUserDataLoading, isUserDataFetching)
+    // console.log('second', user)
+    // console.log('third', !isUserDataError)
+    // console.log('fourth', !!fetchedUserData)
+
+    if (
+      !isUserDataLoading &&
+      !isUserDataFetching &&
+      status == Web3AuthStatus.CONNECTED
+    ) {
+      if (user && !isUserDataError && !!fetchedUserData) {
+        return {
+          ...base,
+          userProfile: userData.profile,
+          userPod: userData.pod,
+          isLoading: false,
+          isFetching: false,
+          isError: false,
+          isReady: true,
+          isAuthenticated: true,
+        }
+      }
+      return {
+        ...base,
+        userProfile: undefined,
+        userPod: undefined,
+        isLoading: false,
+        isFetching: false,
+        isError: true,
+        isReady: true,
+        isAuthenticated: user?.appPubkey ? true : false,
+      }
+    }
+
+    return {
+      ...base,
+      userProfile: undefined,
+      userPod: undefined,
+      isLoading: true,
+      isFetching: true,
+      isError: false,
+      isReady: false,
+      isAuthenticated: false,
+    }
+  }, [
+    login,
+    logout,
+    onSuccessfulLogin,
+    provider,
+    providerData,
+    status,
+    user,
+    web3auth,
+    userData,
+    fetchedUserData,
+    isUserDataLoading,
+    isUserDataFetching,
+    isUserDataError,
+  ])
 
   return (
     <Web3AuthProviderContext.Provider value={ctx}>

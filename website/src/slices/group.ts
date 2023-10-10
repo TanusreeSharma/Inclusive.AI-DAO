@@ -7,7 +7,7 @@ export interface GroupState {
   // Randomly assigned by the server (data is updated by frontend)
   id: string
   // valueTopics: string[],
-  valueQuestions: string[],
+  valueQuestions: string[]
 }
 
 // Define the initial state using that type
@@ -33,6 +33,7 @@ export const groupSlice = createSlice({
 export const { addValueQuestion, updateGroup } = groupSlice.actions
 
 export const selectGroupId = (state: RootState) => state.group.id
-export const selectValueQuestions = (state: RootState) => state.group.valueQuestions
+export const selectValueQuestions = (state: RootState) =>
+  state.group.valueQuestions
 
 export default groupSlice.reducer

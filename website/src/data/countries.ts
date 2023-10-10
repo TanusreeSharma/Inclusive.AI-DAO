@@ -410,3 +410,8 @@ export const groupedCountries: Array<{
     options: allCountries.filter((c) => !c.suggested),
   },
 ]
+
+export const allCountriesQuilFormatted = allCountries.map((c) => ({
+  label: c.name,
+  value: c.abbr,
+}))

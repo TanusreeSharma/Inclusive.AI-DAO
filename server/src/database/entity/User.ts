@@ -1,16 +1,31 @@
-import { BaseEntity, Column, Entity, ManyToOne, OneToMany, OneToOne, PrimaryColumn } from 'typeorm'
+import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, OneToOne, PrimaryColumn } from 'typeorm'
 
-import { Chat, Pod, PodTeam, Profile, Survey } from '@/database/entity'
+import { Chat, Pod, Profile, Survey } from '@/database/entity'
 
 export type UserRole = 'admin' | 'observer' | 'participant'
 
 @Entity()
 export class User extends BaseEntity {
-  @PrimaryColumn()
+  @PrimaryColumn('varchar')
   id: string
 
-  @Column()
+  @Column('varchar')
   name: string
+
+  // app-specific pub key
+  @Column('varchar')
+  appPubkey: string
+
+  // on-chain address
+  @Column('varchar')
+  address: string
+
+  // Prolific ID
+  @Column('varchar', { nullable: true })
+  prolificId: string
+
+  @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP(6)' })
+  createdAt: Date
 
   @Column({
     type: 'enum',
@@ -31,8 +46,17 @@ export class User extends BaseEntity {
   @ManyToOne((type) => Pod, (pod) => pod.user)
   pod?: Pod
 
-  @ManyToOne((type) => PodTeam, (podTeam) => podTeam.user)
-  podTeam?: PodTeam
+  // block number of receiving voting token
+  @Column('int', { nullable: true })
+  votingTokenReceivedBlockNumber: number
+
+  // is the user part of the "early register" voting group
+  @Column('boolean', { default: false })
+  votingEarly: boolean
+
+  // Has completed the Likert scale survey after AI-user discussion?
+  @Column('boolean', { default: false })
+  aiSurveyCompleted: boolean
 
   // static async getUserChats(userId: string) {
   //   // this = AppDataSource.getRepository(User)

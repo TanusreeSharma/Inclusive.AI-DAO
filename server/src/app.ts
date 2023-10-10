@@ -1,19 +1,21 @@
 import 'es6-shim'
 import 'reflect-metadata' // make @decorators work properly (for `routing-controllers` and `typeorm`)
 
-import cors from 'cors'
+// import cors from 'cors'
+import bodyParser from 'body-parser'
 import compression from 'compression'
 import express from 'express'
 import { createServer } from 'http'
 import path from 'path'
 import passport from 'passport'
-import morgan from 'morgan'
+// import * as redis from 'redis'
+import { Redis } from 'ioredis'
 import { Action, useExpressServer } from 'routing-controllers'
 
-import { envVars, jwtStrategy, morganLogger } from '@/config'
+import { envVars, jwtStrategy, morganLogger, winstonLogger } from '@/config'
 import AppDataSource from '@/database/data-source'
 import * as entities from '@/database/entity'
-import { CustomErrorHandler, JwtAuthMiddleware } from '@/middleware'
+import { CustomErrorHandler } from '@/middleware'
 import { createAndAttachSocketIo } from '@/socket'
 import { ApiError } from '@/utils'
 
@@ -27,10 +29,14 @@ passport.use('jwt', jwtStrategy)
 
 let app = express()
 
+// for parsing req.body
+app.use(bodyParser.json())
+
 useExpressServer(app, {
   cors: {
     // origin: '*',
-    origin: 'http://localhost:3000',
+    // origin: 'http://localhost:3000',
+    origin: envVars.NODE_ENV === 'local' ? 'http://localhost:3000' : 'https://myinclusiveai.com',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
     credentials: true
@@ -38,15 +44,15 @@ useExpressServer(app, {
   controllers: [path.join(__dirname + '/controllers/*.controller.ts')],
   // middlewares: [path.join(__dirname + '/middleware/*.middleware.ts')],
   middlewares: [
-    // CustomErrorHandler
+    CustomErrorHandler
     // JwtAuthMiddleware,
   ],
-  // defaultErrorHandler: false, // use custom error handler
+  defaultErrorHandler: false, // use custom error handler
   // Authorization
   authorizationChecker: (action: Action) =>
     new Promise<boolean>((resolve, reject) => {
       passport.authenticate('jwt', (err: ApiError, user: string) => {
-        // console.log(err, user)
+        // console.log('jwt', err, user)
         if (err) return action.next({ error: err.message, status: err.statusCode })
         if (!user) return action.next({ error: 'Invalid user', status: 401 })
 
@@ -58,21 +64,23 @@ useExpressServer(app, {
         return action.next()
       })(action.request, action.response, action.next)
     }),
+
   // Current user available via @CurrentUser
   currentUserChecker: async (action: Action) => {
     // from above, `jwtUser` is set in `authorizationChecker`
+    // console.log('currentUserChecker', action.request.user, action.request.params.user)
     const userId = action.request.user || undefined
     if (!userId) return action.next({ error: 'Authorization of a user is required', status: 401 })
 
     // Fetch user from database
     // return AppDataSource.getRepository('User').findOne(userId)
     try {
-      return AppDataSource.getRepository(entities.User)
-        .createQueryBuilder('user')
-        .where('user.id = :userId', { userId })
-        .getOne()
+      const u = entities.User.findOne({ where: { id: userId } })
+      if (!u) return action.next({ error: 'User not found', status: 401 })
+      return u
     } catch (err) {
-      return action.next({ error: 'User not found', status: 401 })
+      console.log('currentUserChecker', err)
+      return action.next({ error: 'Internal server error', status: 500 })
     }
   }
 })
@@ -87,15 +95,17 @@ createAndAttachSocketIo(httpServer)
 // Register all entities (in `data-source.ts`) and "synchronize" database schema, then call
 // `initialize()` method of a newly created database to initialize initial connection with db
 AppDataSource.initialize()
-  .then(() => {
+  .then(async () => {
     // here you can start to work with your database
-    console.log(`Database connected to ${envVars.POSTGRES_HOST}; DB: ${envVars.POSTGRES_DB}`)
+    winstonLogger.info(`Database connected to ${envVars.DATABASE_URL}`)
+
+    // await AppDataSource.synchronize()
 
     const flag = process.argv[2]
-    if (flag === '--clear' && envVars.NODE_ENV === 'development') {
+    if (flag === '--clear' && envVars.NODE_ENV === 'local') {
       // The --clear flag was passed
       const et = entities
-      const ets = [et.AiResponse, et.Chat, et.Pod, et.PodTeam, et.Profile, et.Survey, et.User, et.ValueQuestion]
+      const ets = [et.AiResponse, et.Chat, et.Pod, et.Profile, et.Survey, et.User, et.ValueQuestion]
 
       ets.forEach(async (entity) => {
         const repo = AppDataSource.getRepository(entity)
@@ -104,7 +114,7 @@ AppDataSource.initialize()
       })
     }
   })
-  .catch((error) => console.log(error))
+  .catch((error) => winstonLogger.error(error))
 
 //
 // Attach extra middlewares & start
@@ -117,8 +127,28 @@ app.use(express.urlencoded({ extended: true }))
 app.use(compression)
 app.use(morganLogger)
 
-httpServer.listen(envVars.PORT, function () {
-  console.log(`Listening on port ${envVars.PORT}`)
+httpServer.listen(envVars.PORT, async () => {
+  winstonLogger.info(`Listening on port ${envVars.PORT}`)
+
+  // const client = redis.createClient({
+  //   url: envVars[`REDIS_URL_${envVars.FLY_REGION.toUpperCase()}`],
+  //   family: 6,
+  //   legacyMode: true,
+  //   // socket: {
+  //   //   family: 6
+  //   // }
+  // })
+  // client.on('error', err => console.log('Redis Client Error', err));
+
+  // const redisUrl = envVars[`REDIS_URL_${envVars.FLY_REGION.toUpperCase()}`]
+  // console.log(redisUrl)
+  // const redis = new Redis(`${redisUrl}?family=6`, { family: 6 })
+
+  // redis.set('test', 'key')
+  // const item = await redis.get('test')
+
+  // console.log(redis)
+  // console.log('test', item)
 })
 
 // app.use(passport.initialize())

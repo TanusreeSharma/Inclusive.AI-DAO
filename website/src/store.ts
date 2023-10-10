@@ -17,6 +17,10 @@ import appReducer from '@/slices/app'
 import chatReducer from '@/slices/chat'
 import groupReducer from '@/slices/group'
 import userReducer from '@/slices/user'
+import { adminApi } from '@/services/admin'
+import { aiApi } from '@/services/ai'
+import { discussApi } from './services/discuss'
+import { surveyApi } from '@/services/survey'
 import { userApi } from '@/services/user'
 
 // Strongly recommended to blacklist any api(s) that you have configured with RTK Query.
@@ -26,7 +30,13 @@ const persistConfig = {
   key: 'root',
   version: 1,
   storage,
-  blacklist: [userApi.reducerPath],
+  blacklist: [
+    adminApi.reducerPath,
+    aiApi.reducerPath,
+    discussApi.reducerPath,
+    surveyApi.reducerPath,
+    userApi.reducerPath,
+  ],
 }
 
 const reducers = combineReducers({
@@ -36,10 +46,50 @@ const reducers = combineReducers({
   user: userReducer,
   // survey: surveyReducer,
   // API reducers
+  [adminApi.reducerPath]: adminApi.reducer,
+  [aiApi.reducerPath]: aiApi.reducer,
+  [discussApi.reducerPath]: discussApi.reducer,
+  [surveyApi.reducerPath]: surveyApi.reducer,
   [userApi.reducerPath]: userApi.reducer,
 })
 
 const persistedReducer = persistReducer(persistConfig, reducers)
+
+// const listenerMiddleware = createListenerMiddleware()
+
+// Re-fetch user data upon submitting survey is successful
+// listenerMiddleware.startListening({
+//   matcher: surveyApi.endpoints.postSurveyAi.matchFulfilled,
+//   effect: async (action, listenerApi) => {
+//     // Can cancel other running instances
+//     listenerApi.cancelActiveListeners()
+
+//     // Run async logic
+//     const data = await useGetUserQuery()
+
+//     // Pause until action dispatched or state changed
+//     if (await listenerApi.condition(surveyApi.endpoints.postSurveyAi.matchFulfilled)) {
+//       // Use the listener API methods to dispatch, get state,
+//       // unsubscribe the listener, start child tasks, and more
+//       listenerApi.dispatch(todoAdded('Buy pet food'))
+
+//       // Spawn "child tasks" that can do more work and return results
+//       const task = listenerApi.fork(async (forkApi) => {
+//         // Can pause execution
+//         await forkApi.delay(5)
+//         // Complete the child by returning a value
+//         return 42
+//       })
+
+//       const result = await task.result
+//       // Unwrap the child result in the listener
+//       if (result.status === 'ok') {
+//         // Logs the `42` result value that was returned
+//         console.log('Child succeeded: ', result.value)
+//       }
+//     }
+//   },
+// })
 
 const store = configureStore({
   reducer: persistedReducer,
@@ -53,6 +103,10 @@ const store = configureStore({
       })
         .concat(thunk)
         // redux toolkit query middleware (auto generated)
+        .concat(adminApi.middleware)
+        .concat(aiApi.middleware)
+        .concat(discussApi.middleware)
+        .concat(surveyApi.middleware)
         .concat(userApi.middleware)
     )
   },

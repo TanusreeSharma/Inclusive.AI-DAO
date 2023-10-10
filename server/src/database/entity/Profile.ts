@@ -56,23 +56,6 @@ export class Profile extends BaseEntity {
   })
   genderIdentityOther: string
 
-  // Do you have any visual impairment?
-  // true => Yes, false => No
-  @Column('boolean')
-  hasVisualImpairment: boolean
-
-  // Which of the following describe your vision level?
-  // Totally Blind
-  // Some Light Perception
-  // Legally Blind
-  // None of the Above
-  @Column({
-    type: 'enum',
-    enum: ety.ProfileVisionLevel,
-    default: ety.ProfileVisionLevel.NONE_ABOVE
-  })
-  visionLevel: ety.ProfileVisionLevel
-
   // Please select your racial or ethnic background (check all that apply):
   // White/Caucasian
   // Black/African American
@@ -176,46 +159,35 @@ export class Profile extends BaseEntity {
   // Other (please specify) __________
   @Column({
     type: 'enum',
-    enum: ['English', 'Other'], // values of ProfileLanguage
+    enum: ['English', 'Other'], // values of ProfilePrimaryLanguage
     default: 'English'
   })
-  language: ety.ProfileLanguage
+  primaryLanguage: ety.ProfilePrimaryLanguage
 
   @Column({
     type: 'varchar',
     length: 255,
     nullable: true
   })
-  languageOther: string
+  primaryLanguageOther: string
 
   // Are you from a country located in the Global South? (Countries in Africa, Latin America, Asia, and Oceania)
   // true => Yes, false => No
-  @Column('boolean')
-  fromGlobalSouth: boolean
+  // @Column('boolean')
+  // fromGlobalSouth: boolean
 
   // How did you hear about this study? (open-ended text)
   @Column('text')
-  studyHearAbout: string
+  studyHear: string
 
-  static async createProfileForUser(
-    params: Omit<CreateUserProfileParams, 'user'> & { userId: string }
-  ): Promise<Profile> {
+  static async createProfileForUser(params: CreateUserProfileParams): Promise<Profile> {
     const profile = new Profile()
-    console.log(params)
-
-    // Since enums are sotred using index, we need to convert the string value (from frontend) to index value
-
-    const user = await AppDataSource.getRepository(User).findOne({ where: { id: params.userId } })
-    // console.log(user)
-
     profile.createdAt = new Date()
-    profile.user = user
+    profile.user = params.user
     profile.ageRange = params.ageRange
     profile.genderIdentity =
       ety.ProfileGenderIdentity[params.genderIdentity as unknown as keyof typeof ety.ProfileGenderIdentity]
     profile.genderIdentityOther = params.genderIdentityOther
-    profile.hasVisualImpairment = params.hasVisualImpairment
-    profile.visionLevel = ety.ProfileVisionLevel[params.visionLevel as unknown as keyof typeof ety.ProfileVisionLevel]
     profile.ethnicBackground =
       ety.ProfileEthnicBackground[params.ethnicBackground as unknown as keyof typeof ety.ProfileEthnicBackground]
     profile.ethnicBackgroundOther = params.ethnicBackgroundOther
@@ -232,10 +204,10 @@ export class Profile extends BaseEntity {
       ]
     profile.householdIncome =
       ety.ProfileHouseholdIncome[params.householdIncome as unknown as keyof typeof ety.ProfileHouseholdIncome]
-    profile.language = params.language
-    profile.languageOther = params.languageOther
-    profile.fromGlobalSouth = params.fromGlobalSouth
-    profile.studyHearAbout = params.studyHearAbout
+    profile.primaryLanguage = params.primaryLanguage
+    profile.primaryLanguageOther = params.primaryLanguageOther
+    // profile.fromGlobalSouth = params.fromGlobalSouth
+    profile.studyHear = params.studyHear
 
     return profile.save()
   }

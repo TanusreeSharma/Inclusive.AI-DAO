@@ -14,7 +14,6 @@ export async function createPods(initialize = true) {
           name: 'Quadratic',
           description: 'Quadratic Voting, same amount of token for equal voting power',
           user: [],
-          podTeam: [],
           valueQuestion: [],
           isActive: true
         },

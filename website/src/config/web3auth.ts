@@ -16,37 +16,45 @@ const target = process.env.NEXT_PUBLIC_WEB3AUTH_TARGET as 'mainnet' | 'testnet'
 //       RPC providers that support Read API. Here, we use
 //       Helius (others include Triton and SimpleHash).
 //
-const GNOSIS_CHAIN_TARGET = {
+const OPTIMISM_CHAIN_TARGET = {
   mainnet: {
-    chainId: '0x64', // 100
-    displayName: 'Gnosis',
-    rpcTarget: process.env.NEXT_PUBLIC_GNOSIS_RPC_MAINNET as string,
-    blockExplorer: 'https://gnosisscan.io/',
+    chainId: '0xA', // 10
+    displayName: 'Optimism',
+    rpcTarget: 'https://rpc.ankr.com/optimism', // process.env.NEXT_PUBLIC_OPTIMISM_RPC_MAINNET
+    blockExplorer: 'https://optimistic.etherscan.io/',
   },
-  testnet: {
-    chainId: '0x27d8', // 10200
-    displayName: 'Gnosis Chiado Testnet',
-    rpcTarget: process.env.NEXT_PUBLIC_GNOSIS_RPC_TESTNET as string,
-    blockExplorer: 'https://gnosis-chiado.blockscout.com/',
-  },
+  // testnet: {
+  //   chainId: '0x27d8', // 10200
+  //   displayName: 'Gnosis Chiado Testnet',
+  //   rpcTarget: process.env.NEXT_PUBLIC_GNOSIS_RPC_TESTNET as string,
+  //   blockExplorer: 'https://gnosis-chiado.blockscout.com/',
+  // },
 }
 
-const AUTH_SERVICE_CREDENTIALS = target === 'mainnet' ? {
-  web3AuthVerifierId: process.env.NEXT_PUBLIC_WEB3AUTH_VERIFIER_ID_MAINNET as string,
-  auth0ClientId: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID_MAINNET as string,
-} : {
-  web3AuthVerifierId: process.env.NEXT_PUBLIC_WEB3AUTH_VERIFIER_ID_TESTNET as string,
-  auth0ClientId: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID_TESTNET as string,
-}
+const AUTH_SERVICE_CREDENTIALS =
+  target === 'mainnet'
+    ? {
+        web3AuthVerifierId: process.env
+          .NEXT_PUBLIC_WEB3AUTH_VERIFIER_ID_MAINNET as string,
+        auth0ClientId: process.env
+          .NEXT_PUBLIC_AUTH0_CLIENT_ID_MAINNET as string,
+      }
+    : {
+        web3AuthVerifierId: process.env
+          .NEXT_PUBLIC_WEB3AUTH_VERIFIER_ID_TESTNET as string,
+        auth0ClientId: process.env
+          .NEXT_PUBLIC_AUTH0_CLIENT_ID_TESTNET as string,
+      }
 
 export const web3AuthConfig: Web3AuthOptions = {
   clientId: AUTH_SERVICE_CREDENTIALS.web3AuthVerifierId,
   web3AuthNetwork: target === 'mainnet' ? 'cyan' : 'testnet',
   chainConfig: {
     chainNamespace: CHAIN_NAMESPACES.EIP155,
-    ticker: 'GNO',
-    tickerName: 'Gnosis',
-    ...GNOSIS_CHAIN_TARGET[target],
+    ticker: 'ETH',
+    tickerName: 'Ether',
+    // ...OPTIMISM_CHAIN_TARGET[target],
+    ...OPTIMISM_CHAIN_TARGET.mainnet,
   },
   uiConfig: {
     loginMethodsOrder: ['google', 'email_passwordless'],
@@ -71,7 +79,7 @@ export const openloginAdapterConfig: OpenloginAdapterOptions = {
         clientId: AUTH_SERVICE_CREDENTIALS.auth0ClientId, // "YOUR-AUTH0-CLIENT-ID-FROM-AUTH0-DASHBOARD",
       },
     },
-    uxMode: 'popup',
+    uxMode: 'redirect',
     whiteLabel: {
       name: 'Inclusive AI',
       // logoLight: 'https://cloudflare-ipfs.com/ipfs/',

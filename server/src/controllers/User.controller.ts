@@ -1,145 +1,140 @@
-import {
-  Authorized,
-  Param,
-  Body,
-  Get,
-  JsonController,
-  Post,
-  Put,
-  SessionParam,
-  UseAfter,
-  UseBefore,
-  CurrentUser
-} from 'routing-controllers'
+import { Authorized, Body, Get, JsonController, Post, CurrentUser } from 'routing-controllers'
 
-import AppDataSource from '@/database/data-source'
-import { Pod, Profile, User, ValueQuestion } from '@/database/entity'
+import { User } from '@/database/entity'
 import { UserRole } from '@/database/entity/User'
-// import { FinalSayMiddleware } from '@/middleware'
-import { CreateUserProfileParams } from '@/types'
-import { staticAssignUserToPod } from '@/utils'
+import { assignPodRoundRobin, assignProfilePicForUser } from '@/utils'
 
 type UserRegisterParams = {
-  id: string
   name: string
   role: UserRole
+  userId: string
+  appPubkey: string
+  address: string
 }
 
 @JsonController('/user')
-@Authorized()
-// @UseAfter(FinalSayMiddleware)
 export default class UserController {
-  @Get('/profile') // GET '/user/profile'
-  async getUserProfile(@CurrentUser({ required: true }) user: User) {
-    const profile = await AppDataSource.getRepository(Profile)
-      .createQueryBuilder('profile')
-      .where('profile.userId = :userId', { userId: user.id })
-      .getOne()
-      .catch((err) => {
-        if (typeof err?.detail === 'string' && err.detail.includes('does not exist')) {
-          return { is: 'does not exist' }
-        }
-        return { is: 'errored' }
-      })
+  @Get('/') // GET '/user/' (need authorization)
+  @Authorized()
+  async getUser(@CurrentUser({ required: true }) user: User) {
+    const userData = await User.findOne({
+      where: { id: user.id },
+      relations: ['profile', 'pod', 'pod.valueQuestion'],
+      // cache: true,
+    })
 
-    if (!profile) return { is: 'not found' }
+    if (!userData) return { error: 'user-not-found', payload: null }
+
     return {
-      user,
-      ...profile
+      error: null,
+      payload: {
+        user: {
+          id: userData.id,
+          role: userData.role,
+          address: userData.address,
+          aiSurveyCompleted: userData.aiSurveyCompleted,
+          votingEarly: userData.votingEarly,
+          votingTokenReceivedBlockNumber: userData.votingTokenReceivedBlockNumber
+        },
+        pod: userData.pod,
+        profile: userData.profile
+      }
     }
   }
 
-  @Post('/profile') // POST '/user/profile'
-  async createUserProfile(@Body({ required: true }) body: Omit<CreateUserProfileParams, 'user'> & { userId: string }) {
-    const newProfileData = body as Omit<CreateUserProfileParams, 'appPubkey'> & { userId: string }
+  // TODO: Validate that JWT's `sub` matches `userId` (email) in body (to prevent spoofing)
+  @Post('/pre') // POST '/user/pre'
+  @Authorized()
+  async preInitUser(
+    @Body({ required: true })
+    body: UserRegisterParams
+  ) {
+    let ret = { error: 'user-not-created', payload: null }
 
-    // First check that user exists
-    const user = await AppDataSource.getRepository(User)
-      .createQueryBuilder('user')
-      .where('user.id = :id', { id: body.userId })
-      .getOne()
-
-    if (!user) return { is: 'user does not exist' }
-
-    let ret = { is: 'profile not added' }
     try {
-      await Profile.createProfileForUser(newProfileData)
-      ret = { is: 'profile added' }
+      const user = await User.findOne({ where: { id: body.userId } }) //cache: true
+
+      if (!!user) {
+        ret = { error: 'user-already-exists', payload: null }
+      } else {
+        const user = User.create({
+          id: body.userId,
+          name: body.name,
+          role: body.role,
+          appPubkey: body.appPubkey,
+          address: body.address
+        })
+
+        await user.save()
+
+        ret = { error: null, payload: 'success' }
+      }
     } catch (err: any) {
       console.log(err)
-      if (typeof err?.detail === 'string' && err.detail.includes('already exists')) {
-        ret = { is: 'profile exists' }
-      }
-    }
-
-    if (ret.is === 'profile added') {
-      await staticAssignUserToPod(body.userId)
     }
 
     return ret
   }
 
-  @Post('/register') // POST '/user/register'
-  async userRegister(@Param('user') userId: string, @Body({ required: true }) body: UserRegisterParams) {
-    // console.log(userId)
-    try {
-      await AppDataSource.createQueryBuilder()
-        .insert()
-        .into(User)
-        .values([
-          {
-            id: userId,
-            name: body.name,
-            role: body.role
-          }
-        ])
-        .execute()
-      return { is: 'registered' }
-    } catch (err: any) {
-      console.log(err)
-      if (typeof err?.detail === 'string' && err.detail.includes('already exists')) {
-        return { is: 'already registered' }
-      }
-      return { is: 'not registered' }
-    }
-    // return { is: 'registered' }
-  }
+  // TODO: Validate that JWT's `sub` matches `userId` (email) in body (to prevent spoofing)
+  @Post('/') // POST '/user/'
+  // @Authorized() // turn on after testing implementation
+  async createUser(
+    @Body({ required: true })
+    body: UserRegisterParams // & Omit<CreateUserProfileParams, 'user'>
+  ) {
+    // console.log(body)
+    let user = await User.findOne({ where: { id: body.userId }, relations: ['profile'], cache: true })
 
-  @Get('/pod') // GET '/user/pod'
-  async getUserPod(@CurrentUser({ required: true }) user: User) {
-    const pod = await AppDataSource.getRepository(Pod)
-      .createQueryBuilder('pod')
-      // .leftJoin('pod.podTeam', 'podTeam')
-      .leftJoinAndSelect('pod.valueQuestion', 'valueQuestion') // implict 3rd arg: 'pod.id = valueQuestion.pod'
-      .leftJoin('pod.user', 'user') // don't select (NEED for `where` clause below)
-      .where('user.id = :userId', { userId: user.id })
-      .getOne()
-      .catch((err) => {
-        if (typeof err?.detail === 'string' && err.detail.includes('does not exist')) {
-          return { is: 'does not exist' }
-        }
-        return { is: 'errored' }
+    // Create User if doesn't exist
+    if (!user) {
+      const pod = await assignPodRoundRobin()
+      user = User.create({
+        id: body.userId,
+        name: body.name,
+        role: body.role,
+        appPubkey: body.appPubkey,
+        address: body.address,
+        pod
       })
 
-    console.log(pod)
-    if (!pod) return { is: 'not found' }
-    return pod
-  }
+      await user.save()
 
-  // @Get('/users/:id')
-  // getOne(@Param('id') id: number) {
-  //   return 'This action returns user #' + id
-  // }
-  // @Post('/users')
-  // post(@Body() user: any) {
-  //   return 'Saving user...'
-  // }
-  // @Put('/users/:id')
-  // put(@Param('id') id: number, @Body() user: any) {
-  //   return 'Updating a user...'
-  // }
-  // @Delete('/users/:id')
-  // remove(@Param('id') id: number) {
-  //   return 'Removing user...'
-  // }
+      await assignProfilePicForUser(body.userId)
+
+      return { error: null, payload: 'success' }
+    }
+
+    return { error: 'user-already-exists', payload: null }
+
+    // Assign Pod if doesn't exist
+    // if (!user.pod) {
+    //   const pod = await assignPodRoundRobin()
+    //   user.pod = pod
+    //   await user.save()
+    // }
+    // console.log(user)
+
+
+    // // If profile already exists (which only should happen if user also exists), then return
+    // if (user && !!user.profile) {
+    //   return { error: 'user-already-exists', payload: null }
+    // }
+
+    // let ret = { error: 'user-not-created', payload: null }
+
+    // const newProfileData = { user, ...body } as CreateUserProfileParams
+
+    // try {
+    //   await Profile.createProfileForUser(newProfileData)
+    //   ret = { error: null, payload: 'success' }
+    // } catch (err: any) {
+    //   console.log(err)
+    //   if (typeof err?.detail === 'string' && err.detail.includes('already exists')) {
+    //     ret = { error: 'user-already-exists', payload: null }
+    //   }
+    // }
+
+    // return ret
+  }
 }

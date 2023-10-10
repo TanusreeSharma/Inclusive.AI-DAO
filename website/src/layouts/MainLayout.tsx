@@ -1,18 +1,14 @@
 import { Box } from '@mui/material'
 
-export function MainLayout({
-  children,
-  className,
-}: React.PropsWithChildren & { className?: string }) {
+export function MainLayout({ children }: React.PropsWithChildren) {
   return (
     <Box
       height="100vh"
       maxHeight="100vh"
       overflow="hidden"
-      className={className}
-      pt={8}
+      pt={7}
       pb={3}
-      px={6}
+      px={4}
     >
       {children}
     </Box>

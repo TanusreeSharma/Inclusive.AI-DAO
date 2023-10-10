@@ -1,18 +1,17 @@
-export type UserProfileAgeRange = 'under_18' | '18_24' | '25_34' | '45_54' | '55_64' | '65_up'
+export type UserProfileAgeRange =
+  | 'under_18'
+  | '18_24'
+  | '25_34'
+  | '45_54'
+  | '55_64'
+  | '65_up'
 
 export enum UserProfileGenderIdentity {
   MALE,
   FEMALE,
   NON_BINARY,
   PREFER_NO_DISCLOSE,
-  OTHER
-}
-
-export enum UserProfileVisionLevel {
-  TOTALLY_BLIND,
-  SOME_LIGHT_PERCEPTION,
-  LEGALLY_BLIND,
-  NONE_ABOVE
+  OTHER,
 }
 
 export enum UserProfileEthnicBackground {
@@ -23,7 +22,7 @@ export enum UserProfileEthnicBackground {
   NATIVE_AMERICAN_INDIGENOUS,
   PACIFIC_ISLANDER,
   MIXED_RACE,
-  OTHER
+  OTHER,
 }
 
 export enum UserProfileEducationLevel {
@@ -32,7 +31,7 @@ export enum UserProfileEducationLevel {
   SOME_COLLEGE_OR_VOCATIONAL,
   BACHELOR,
   MASTER,
-  DOCTORATE_OR_PROFESSIONAL
+  DOCTORATE_OR_PROFESSIONAL,
 }
 
 export enum UserProfileEmploymentStatus {
@@ -41,14 +40,14 @@ export enum UserProfileEmploymentStatus {
   UNEMPLOYED,
   STUDENT,
   RETIRED,
-  OTHER
+  OTHER,
 }
 
 export enum UserProfileDeviceUsageFrequency {
   FREQUENTLY,
   OCCASIONALLY,
   RARELY,
-  NEVER
+  NEVER,
 }
 
 export enum UserProfileHouseholdIncome {
@@ -56,7 +55,7 @@ export enum UserProfileHouseholdIncome {
   BTW_20_40K,
   BTW_40_60K,
   BTW_60_80K,
-  OVER_100K
+  OVER_100K,
 }
 
-export type UserProfileLanguage = 'English' | 'Other'
+export type UserProfilePrimaryLanguage = 'English' | 'Other'

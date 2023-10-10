@@ -1,16 +1,17 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
-import { HYDRATE } from 'next-redux-wrapper'
+import { createApi } from '@reduxjs/toolkit/query/react'
+// import { HYDRATE } from 'next-redux-wrapper'
 
 import { baseQuery } from '@/services'
-import { type UserProfile } from '@/slices/user'
-import { UserPod } from '@/types'
+import type { UserExtendedData } from '@/types/user'
 
-export type ApiResponseIs = { is: 'not found' | 'errored' | 'does not exist' }
+export type ApiResponse<T = any> =
+  | { error: string; payload: null }
+  | { error: null; payload: T }
 
 export const userApi = createApi({
   reducerPath: 'userApi',
   baseQuery,
-  refetchOnMountOrArgChange: 30,
+  refetchOnMountOrArgChange: true, // for appPubkey
   //
   // Note: Do not rehydrate the userApi slice reducer. This will cause the api cache to be restored, which might be
   // stuck when fetching state.
@@ -22,43 +23,56 @@ export const userApi = createApi({
   //   }
   // },
   endpoints: (builder) => ({
-    getUserPod: builder.query<
-      UserPod | ApiResponseIs,
+    getUser: builder.query<
+      ApiResponse<UserExtendedData>,
       string // appPubkey
     >({
+      // User is auto-parsed by server using the JWT token in the Headers
+      // (passed in from the custom extended `baseQuery`)
       query: (appPubkey: string) => ({
-        url: 'user/pod',
+        url: 'user',
         params: { appPubkey },
       }),
     }),
 
-    getUserProfile: builder.query<
-      UserProfile | ApiResponseIs,
-      string // appPubkey
+    preInitUser: builder.mutation<
+      ApiResponse,
+      {
+        name: string // user's display name
+        role: string // user's role (`participant` or `admin`)
+        userId: string // user's email
+        appPubkey: string
+        address: string
+      }
     >({
-      // user is auto-inferred using JWT token in headers
-      query: (appPubkey: string) => ({
-        url: 'user/profile',
-        params: { appPubkey },
-      }),
-    }),
-
-    postUserRegister: builder.mutation({
-      query: (body: { appPubkey: string; name: string; role: string }) => ({
-        url: 'user/register',
+      query: (body) => ({
+        url: 'user/pre',
         method: 'POST',
         body,
       }),
     }),
 
-    postUserProfile: builder.mutation({
+    createUser: builder.mutation<
+      ApiResponse,
+      {
+        name: string
+        role: string
+        userId: string
+        appPubkey: string
+        address: string
+      }
+    >({
       query: (
-        body: Omit<UserProfile, 'user'> & {
-          userId: string
-          appPubkey: string
-        },
+        // body: Omit<UserProfile, 'user'> & {
+        //   name: string // user's display name
+        //   role: string // user's role (`participant` or `admin`)
+        //   userId: string // user's email
+        //   appPubkey: string
+        //   address: string
+        // },
+        body,
       ) => ({
-        url: 'user/profile',
+        url: 'user',
         method: 'POST',
         body,
       }),
@@ -67,8 +81,7 @@ export const userApi = createApi({
 })
 
 export const {
-  useGetUserPodQuery,
-  useGetUserProfileQuery,
-  usePostUserRegisterMutation,
-  usePostUserProfileMutation,
+  useCreateUserMutation,
+  useGetUserQuery,
+  usePreInitUserMutation,
 } = userApi

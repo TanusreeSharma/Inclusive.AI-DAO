@@ -1,4 +1,4 @@
-import { BaseEntity, Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
+import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
 
 import { AiResponse, User } from '@/database/entity'
 
@@ -10,14 +10,23 @@ export class Chat extends BaseEntity {
   @Column('text')
   text: string
 
-  @Column()
-  channel: string
-
-  @Column() // user's connection id
+  @Column('varchar') // user's connection id, e.g. sha256(user_email + chat_location)
   connection: string
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date
+
+  // ID that this message is replying to
+  @Column('integer', { nullable: true })
+  replyTo: number
+
+  // Hide this message
+  @Column('boolean', { default: false })
+  hidden: boolean
+
+  // Message is flagged for content
+  @Column('boolean', { default: false })
+  flagged: boolean
 
   @ManyToOne((type) => User, (user) => user.chats)
   // @JoinColumn() // Chat owns the relationship, this column is foreign key (for many-to-one, owner side is always many-to-one)

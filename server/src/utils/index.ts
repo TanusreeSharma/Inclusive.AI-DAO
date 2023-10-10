@@ -1,4 +1,10 @@
+import * as crypto from 'crypto'
+
 export * from './assign-pod'
+export * from './assign-profile-pics'
+export * from './assign-snapshot'
+export * from './assign-vote-power'
+export * from './snapshot'
 
 export class ApiError extends Error {
   statusCode: number // using http-status
@@ -28,3 +34,6 @@ export function deepExtend(...extend: any[]) {
   }
   return end
 }
+
+export const sha256 = (msg: string) =>
+  crypto.createHash('sha256').update(msg).digest('hex')

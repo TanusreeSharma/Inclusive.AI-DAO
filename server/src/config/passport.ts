@@ -34,7 +34,7 @@ const jwtStrategyFunction = async (
     // For some reason, req.body is only available if @Body() or @Body({ required: true } is set in controller routes
     //
 
-    console.log(req.query, req.params, req.body)
+    // console.log(req.query, req.params, req.body)
 
     // `appPubkey` passed in from the frontend Web3Auth in the request param or body
     let appPubkey = undefined
@@ -68,7 +68,10 @@ const jwtStrategyFunction = async (
     // Checking `appPubkey` against the decoded JWT wallet's public_key
     // (note `wallet` type (for Web3Auth) is not in the `jose` package, so we use `any`)
     const payload = jwtDecoded.payload as any
-    if (payload.wallets[0].public_key === appPubkey && payload.iss === 'https://api.openlogin.com') {
+    if (
+      payload.wallets[0].public_key === appPubkey &&
+      (payload.iss === 'https://api-auth.web3auth.io' || payload.iss === 'https://api.openlogin.com')
+    ) {
       const userId =
         (jwtDecoded.payload.email as string) || (jwtDecoded.payload.verifierId as string) || jwtDecoded.payload.sub
       callback(null, userId)
@@ -77,11 +80,11 @@ const jwtStrategyFunction = async (
       throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid user credentials')
     }
   } catch (e) {
+    console.log(e)
     if (e instanceof ApiError) {
       //  || e instanceof jwt.JsonWebTokenError || e instanceof jwt.NotBeforeError || e instanceof jwt.TokenExpiredError
       callback(e, null)
     } else {
-      console.log(e)
       callback(new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Internal server error'), null)
     }
   }

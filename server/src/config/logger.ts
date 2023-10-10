@@ -1,30 +1,40 @@
 import chalk from 'chalk'
 import morgan from 'morgan'
-// import winston from 'winston'
+import path from 'node:path'
+import winston from 'winston'
 
-// import envVars from '@/config/env-vars'
+import envVars from '@/config/env-vars'
 
-// const enumerateErrorFormat = winston.format((info) => {
-//   if (info instanceof Error) {
-//     Object.assign(info, { message: info.stack })
-//   }
-//   return info
-// })
+const enumerateErrorFormat = winston.format((info) => {
+  if (info instanceof Error) {
+    Object.assign(info, { message: info.stack })
+  }
+  return info
+})
 
-// export const winstonLogger = winston.createLogger({
-//   level: envVars.NODE_ENV === 'development' ? 'debug' : 'info',
-//   format: winston.format.combine(
-//     enumerateErrorFormat(),
-//     envVars.NODE_ENV === 'development' ? winston.format.colorize() : winston.format.uncolorize(),
-//     winston.format.splat(),
-//     winston.format.printf(({ level, message }) => `${level}: ${message}`)
-//   ),
-//   transports: [
-//     new winston.transports.Console({
-//       stderrLevels: ['error']
-//     })
-//   ]
-// })
+const srcDir = path.dirname(require.main.filename)
+const logDir = path.join(srcDir, '../logs')
+
+export const winstonLogger = winston.createLogger({
+  level: envVars.NODE_ENV === 'local' ? 'debug' : 'info',
+  format: winston.format.combine(
+    // enumerateErrorFormat(),
+    // envVars.NODE_ENV === 'local' ? winston.format.colorize() : winston.format.uncolorize(),
+    // winston.format.splat(),
+    // winston.format.printf(({ level, message }) => `${level}: ${message}`)
+    //
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      stderrLevels: ['error']
+    }),
+    new winston.transports.File({ filename: path.join(logDir, 'error.log'), level: 'error' }),
+    new winston.transports.File({ filename: path.join(logDir, 'info.log'), level: 'info' }),
+    new winston.transports.File({ filename: path.join(logDir, 'debug.log'), level: 'debug' })
+  ]
+})
 
 export const morganLogger = morgan(function (tokens, req, res) {
   return [

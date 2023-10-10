@@ -23,8 +23,8 @@ export async function createValueQuestions(initialize = true) {
   //
 
   const valueTopic = 'Stereotypical Generative AI'
-  const valueQuestion = `When generative models create images for underspecified prompts like 'a CEO', 'a doctor', or 'a nurse', they have the potential to produce either diverse or homogeneous outputs. How should AI models balance these possibilities?`
-  const valueNote = `You can explore the implications of producing diverse versus homogeneous outputs in generative AI models.`
+  const valueQuestion = `How should AI models balance between diverse or homogeneous outputs?`
+  const valueNote = `When generative models create images for underspecified prompts like "a CEO," "a doctor," or "a nurse," they have the potential to produce either diverse or homogeneous outputs. How should AI models balance these possibilities? \n\nYou can explore the implications of producing diverse versus homogeneous outputs in generative AI models.`
 
   const inserts = [podQuadraticEqual, podQuadraticEarly, podRankedEqual, podRankedEarly].map((pod) => ({
     topic: valueTopic,

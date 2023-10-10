@@ -8,13 +8,6 @@ export enum ProfileGenderIdentity {
   OTHER
 }
 
-export enum ProfileVisionLevel {
-  TOTALLY_BLIND,
-  SOME_LIGHT_PERCEPTION,
-  LEGALLY_BLIND,
-  NONE_ABOVE
-}
-
 export enum ProfileEthnicBackground {
   WHITE_CAUCASIAN,
   BLACK_AFRICAN_AMERICAN,
@@ -59,4 +52,4 @@ export enum ProfileHouseholdIncome {
   OVER_100K
 }
 
-export type ProfileLanguage = 'English' | 'Other'
+export type ProfilePrimaryLanguage = 'English' | 'Other'

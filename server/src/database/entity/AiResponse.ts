@@ -10,8 +10,8 @@ export class AiResponse extends BaseEntity {
   @Column('text')
   text: string
 
-  @Column()
-  channel: string
+  @Column('varchar')
+  connection: string
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date

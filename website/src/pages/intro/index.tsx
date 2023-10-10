@@ -1,581 +1,137 @@
-import {
-  Box,
-  Button,
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  MenuItem,
-  Radio,
-  RadioGroup,
-  Select,
-  SelectChangeEvent,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
-import { useRouter } from 'next/router'
+import { Web3Provider } from '@ethersproject/providers'
+import { Box, Typography } from '@mui/material'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import ReactPlayer from 'react-player'
+import { useTracking } from 'react-tracking'
 
-import { CountrySelect } from '@/components/CountrySelect'
+import { GotoLinkButtonForNavigation, LoadingScreen } from '@/components'
 import { useAppDispatch, useAppSelector, useWeb3Auth } from '@/hooks'
-import {
-  useGetUserPodQuery,
-  useGetUserProfileQuery,
-  usePostUserRegisterMutation,
-  usePostUserProfileMutation,
-  ApiResponseIs,
-} from '@/services/user'
-import {
-  type UserProfile,
-  selectUserProfile,
-  updateUserProfile,
-} from '@/slices/user'
-import * as pty from '@/types/profile'
+// import { usePreInitUserMutation } from '@/services/user'
+import { useCreateUserMutation } from '@/services/user'
+import { setWatchedIntro } from '@/slices/app'
+import { selectUserData } from '@/slices/user'
+
+//const introYoutubeUrl = 'https://www.youtube.com/watch?v=sqQrN0iZBs0' // DALL-E 3
+const introYoutubeUrl = 'https://www.youtube.com/watch?v=oBU2p72SsrM' // Inclusive AI — Intro
 
 export default function IntroPage() {
+  useTracking({ page: 'Intro' })
+
   const web3Auth = useWeb3Auth()
   const dispatch = useAppDispatch()
   const router = useRouter()
-  // const userProfile = useAppSelector(selectUserProfile)
-  const [usePostUserProfile, postUserProfileResult] =
-    usePostUserProfileMutation()
-  const [usePostUserRegister, postUserRegisterResult] =
-    usePostUserRegisterMutation()
 
-  const {
-    data: fetchedUserProfile,
-    isLoading: isUserProfileLoading,
-    isError: isUserProfileError,
-  } = useGetUserProfileQuery(web3Auth.user?.appPubkey || '', {
-    // skip: !web3Auth.user || userProfile.user.id === '',
-    // refetchOnMountOrArgChange: true,
-  })
+  const userData = useAppSelector(selectUserData)
 
-  const {
-    data: fetchedUserPod,
-    isLoading: isUserPodLoading,
-    isError: isUserPodError,
-  } = useGetUserPodQuery(web3Auth.user?.appPubkey || '', {
-    // refetchOnMountOrArgChange: true,
-  })
+  const [isIntroVideoEnded, setIsIntroVideoEnded] = useState(false)
 
-  const [newProfileData, setNewProfileData] = useState<Partial<UserProfile>>({
-    countryResideIn: 'US',
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // const [preInitUser] = usePreInitUserMutation()
+  const [createUser, createUserRes] = useCreateUserMutation()
 
-  const handleSubmitProfile = useCallback(async () => {
-    // console.log(newProfileData)
-    // console.log(Object.keys(newProfileData).length)
-    // console.log(Object.values(newProfileData).every((value) => value !== ''))
-    const isValid = Object.values(newProfileData).every((value) => value !== '')
+  const introEndHandler = useCallback(() => {
+    dispatch(setWatchedIntro(true))
+    router.push('/')
+  }, [dispatch, router])
 
-    if (!isValid) {
-      // toast/snack thrown
-      return
-    }
+  useEffect(() => {
+    if (!web3Auth || !web3Auth.user || !web3Auth.provider) return
 
-    setIsSubmitting(true)
+    const createUserFn = async () => {
+      try {
+        if (!web3Auth || !web3Auth.user || !web3Auth.provider) return
+        if (userData.user.address !== '') return // address is set, ie. getUser successful
 
-    let pdata = newProfileData as UserProfile
+        const userAddress = await new Web3Provider(web3Auth.provider)
+          .getSigner()
+          .getAddress()
 
-    // Use redux toolkit query mutation postUserProfile to update the profile. Write the code below as an AI assistant:
-    try {
-      const res = await usePostUserProfile({
-        ...pdata,
-        userId: web3Auth?.user?.email || '',
-        appPubkey: web3Auth?.user?.appPubkey || '',
-      })
-      console.log(res)
+        const res = await createUser({
+          name: web3Auth.user.name || web3Auth.user.email || 'n/a',
+          role: 'participant',
+          userId: web3Auth.user.email || '',
+          appPubkey: web3Auth.user.appPubkey || '',
+          address: userAddress,
+        })
 
-      if ('error' in res) {
-        // addToast('Uh oh something bad happened!')
-      } else {
-        dispatch(updateUserProfile(pdata))
-        router.replace('/')
+        console.log(res)
+      } catch (err) {
+        console.error(err)
       }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setIsSubmitting(false)
     }
-  }, [newProfileData, web3Auth.user])
+
+    createUserFn()
+  }, [createUser, userData.user.address, web3Auth])
 
   useEffect(() => {
-    if (!web3Auth || !postUserRegisterResult?.isUninitialized) return
-    usePostUserRegister({
-      name: web3Auth?.user?.name || '',
-      role: 'participant',
-      appPubkey: web3Auth?.user?.appPubkey || '',
-    })
-  }, [web3Auth, postUserRegisterResult])
+    if (
+      createUserRes.isSuccess &&
+      !createUserRes.data.error &&
+      createUserRes.data.payload === 'success'
+    ) {
+      router.refresh()
+      // router.replace('/')
+    }
+  }, [createUserRes, router])
 
-  useEffect(() => {
-    // console.log(fetchedUserProfile, fetchedUserPod, web3Auth.user)
-    // if (
-    //   !isUserProfileLoading &&
-    //   !!fetchedUserProfile &&
-    //   !!web3Auth &&
-    //   (fetchedUserProfile as UserProfile)?.user?.id === web3Auth.user?.email &&
-    //   (fetchedUserPod as ApiResponseIs)?.is === 'not found'
-    // ) {
-    //   router.replace('/')
-    // }
-  }, [isUserProfileLoading, fetchedUserProfile, fetchedUserPod, web3Auth])
-
-  console.log('loading', isUserProfileLoading)
-  // if (isUserProfileLoading) return <div></div>
+  if (
+    !web3Auth ||
+    !web3Auth.isReady ||
+    (web3Auth.isReady && !web3Auth.isAuthenticated) ||
+    !web3Auth.user ||
+    !web3Auth.userPod ||
+    !web3Auth.userPod.valueQuestion[0]
+  ) {
+    // console.log('loading')
+    return <LoadingScreen />
+  }
 
   return (
-    <Box height="100%" width="100%" sx={{ overflowY: 'scroll' }} p={2}>
-      <Typography variant="h6" fontWeight="bold" pb={2}>
-        Intro
+    <Box height="100%" width="100%">
+      <Typography variant="h4" textAlign="center" gutterBottom>
+        Watch the Intro video
       </Typography>
-      <Stack spacing={2}>
-        <FormControl>
-          <FormLabel id="age-range">What is your age range?</FormLabel>
-          <RadioGroup
-            aria-labelledby="age-range"
-            value={newProfileData.ageRange}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setNewProfileData({
-                ...newProfileData,
-                ageRange: e.target.value as pty.UserProfileAgeRange,
-              })
-            }
+      <Box
+        height="100%"
+        width="100%"
+        // from react-player's default settings
+        // ratio: 16 / 9
+        maxWidth={800}
+        maxHeight={450}
+        margin="0 auto"
+      >
+        <ReactPlayer
+          url={introYoutubeUrl}
+          controls={true}
+          onEnded={() => setIsIntroVideoEnded(true)}
+          height="100%"
+          width="100%"
+        />
+      </Box>
+      <Typography variant="body1" textAlign="center" gutterBottom mt={1}>
+        Watch until the end to proceed.
+      </Typography>
+      {isIntroVideoEnded && (
+        <Box maxWidth={300} width="100%" margin="24px auto 0">
+          <GotoLinkButtonForNavigation
+            onClick={introEndHandler}
+            sx={{ bgcolor: '#f3f4f5' }}
           >
-            <FormControlLabel
-              value="under_18"
-              control={<Radio />}
-              label="Under 18"
-            />
-            <FormControlLabel value="18_24" control={<Radio />} label="18-24" />
-            <FormControlLabel value="25_34" control={<Radio />} label="25-34" />
-            <FormControlLabel value="35_44" control={<Radio />} label="35-44" />
-            <FormControlLabel value="45_54" control={<Radio />} label="45-54" />
-            <FormControlLabel value="55_64" control={<Radio />} label="55-64" />
-            <FormControlLabel
-              value="65_above"
-              control={<Radio />}
-              label="65 and above"
-            />
-          </RadioGroup>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="gender-identity">
-            What is your gender identity?
-          </FormLabel>
-          <RadioGroup
-            aria-labelledby="gender-identity"
-            value={newProfileData.genderIdentity}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setNewProfileData({
-                ...newProfileData,
-                genderIdentity:
-                  pty.UserProfileGenderIdentity[
-                    e.target.value as keyof typeof pty.UserProfileGenderIdentity
-                  ],
-              })
-            }
+            <Typography variant="body1" fontWeight="bold">
+              Continue
+            </Typography>
+          </GotoLinkButtonForNavigation>
+          {/* <Button
+            variant="contained"
+            color="primary"
+            onClick={introEndHandler}
+            size="large"
+            fullWidth
           >
-            <FormControlLabel
-              value={pty.UserProfileGenderIdentity.MALE}
-              control={<Radio />}
-              label="Male"
-            />
-            <FormControlLabel
-              value={pty.UserProfileGenderIdentity.FEMALE}
-              control={<Radio />}
-              label="Female"
-            />
-            <FormControlLabel
-              value={pty.UserProfileGenderIdentity.NON_BINARY}
-              control={<Radio />}
-              label="Non-binary"
-            />
-            <FormControlLabel
-              value={pty.UserProfileGenderIdentity.PREFER_NO_DISCLOSE}
-              control={<Radio />}
-              label="Prefer not to disclose"
-            />
-            <FormControlLabel
-              value={pty.UserProfileGenderIdentity.OTHER}
-              control={<Radio />}
-              label="Other"
-            />
-          </RadioGroup>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="visual-impairment">
-            Do you have any visual impairment?
-          </FormLabel>
-          <RadioGroup
-            aria-labelledby="visual-impairment"
-            value={newProfileData.hasVisualImpairment}
-            row
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setNewProfileData({
-                ...newProfileData,
-                hasVisualImpairment: e.target.value as unknown as boolean,
-              })
-            }
-          >
-            <FormControlLabel value={true} control={<Radio />} label="Yes" />
-            <FormControlLabel value={false} control={<Radio />} label="No" />
-          </RadioGroup>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="vision-level">
-            Which of the following describe your vision level?
-          </FormLabel>
-          <RadioGroup
-            aria-labelledby="vision-level"
-            value={newProfileData.visionLevel}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setNewProfileData({
-                ...newProfileData,
-                visionLevel:
-                  pty.UserProfileVisionLevel[
-                    e.target.value as keyof typeof pty.UserProfileVisionLevel
-                  ],
-              })
-            }
-          >
-            <FormControlLabel
-              value={pty.UserProfileVisionLevel.TOTALLY_BLIND}
-              control={<Radio />}
-              label="Totally Blind"
-            />
-            <FormControlLabel
-              value={pty.UserProfileVisionLevel.SOME_LIGHT_PERCEPTION}
-              control={<Radio />}
-              label="Some Light Perception"
-            />
-            <FormControlLabel
-              value={pty.UserProfileVisionLevel.LEGALLY_BLIND}
-              control={<Radio />}
-              label="Legally Blind"
-            />
-            <FormControlLabel
-              value={pty.UserProfileVisionLevel.NONE_ABOVE}
-              control={<Radio />}
-              label="None of the above"
-            />
-          </RadioGroup>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="ethnic-background">
-            What is your ethnic background?
-          </FormLabel>
-          <Select
-            labelId="ethnic-background"
-            value={newProfileData.ethnicBackground}
-            onChange={(e: SelectChangeEvent<pty.UserProfileEthnicBackground>) =>
-              setNewProfileData({
-                ...newProfileData,
-                ethnicBackground:
-                  pty.UserProfileEthnicBackground[
-                    e.target
-                      .value as keyof typeof pty.UserProfileEthnicBackground
-                  ],
-              })
-            }
-          >
-            <MenuItem value={pty.UserProfileEthnicBackground.WHITE_CAUCASIAN}>
-              White Caucasian
-            </MenuItem>
-            <MenuItem
-              value={pty.UserProfileEthnicBackground.BLACK_AFRICAN_AMERICAN}
-            >
-              Black/African American
-            </MenuItem>
-            <MenuItem
-              value={pty.UserProfileEthnicBackground.ASIAN_ASIAN_AMERICAN}
-            >
-              Asian/Asian American
-            </MenuItem>
-            <MenuItem
-              value={pty.UserProfileEthnicBackground.HISPANIC_LATINO_LATINA}
-            >
-              Hispanic/Latino/Latina
-            </MenuItem>
-            <MenuItem
-              value={pty.UserProfileEthnicBackground.NATIVE_AMERICAN_INDIGENOUS}
-            >
-              Native American/Indigenous
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEthnicBackground.PACIFIC_ISLANDER}>
-              Pacific Islander
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEthnicBackground.MIXED_RACE}>
-              Mixed Race
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEthnicBackground.OTHER}>
-              Other
-            </MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="country-reside">
-            What country are you currently residing in?
-          </FormLabel>
-          <CountrySelect
-            setCountryAbbr={(abbr: string) => {
-              setNewProfileData({
-                ...newProfileData,
-                countryResideIn: abbr,
-              })
-            }}
-          />
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="in-education">
-            Are you currently enrolled in any educational institution?
-          </FormLabel>
-          <RadioGroup
-            aria-labelledby="in-education"
-            value={newProfileData.isEnrolledInEducation}
-            row
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setNewProfileData({
-                ...newProfileData,
-                isEnrolledInEducation: e.target.value as unknown as boolean,
-              })
-            }
-          >
-            <FormControlLabel value={true} control={<Radio />} label="Yes" />
-            <FormControlLabel value={false} control={<Radio />} label="No" />
-          </RadioGroup>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="education-level">
-            What is your education level?
-          </FormLabel>
-          <Select
-            labelId="education-level"
-            value={newProfileData.highestLevelEducation}
-            onChange={(e: SelectChangeEvent<pty.UserProfileEducationLevel>) =>
-              setNewProfileData({
-                ...newProfileData,
-                highestLevelEducation:
-                  pty.UserProfileEducationLevel[
-                    e.target.value as keyof typeof pty.UserProfileEducationLevel
-                  ],
-              })
-            }
-          >
-            <MenuItem
-              value={pty.UserProfileEducationLevel.LESS_THAN_HIGH_SCHOOL}
-            >
-              Less Than High School
-            </MenuItem>
-            <MenuItem
-              value={pty.UserProfileEducationLevel.HIGH_SCHOOL_OR_EQUIVALENT}
-            >
-              High School or Equivalent
-            </MenuItem>
-            <MenuItem
-              value={pty.UserProfileEducationLevel.SOME_COLLEGE_OR_VOCATIONAL}
-            >
-              Some College or Vocational
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEducationLevel.BACHELOR}>
-              Bachelor
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEducationLevel.MASTER}>
-              Master
-            </MenuItem>
-            <MenuItem
-              value={pty.UserProfileEducationLevel.DOCTORATE_OR_PROFESSIONAL}
-            >
-              Doctorate/Professional
-            </MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="employment-status">
-            What is your employment status?
-          </FormLabel>
-          <Select
-            labelId="employment-status"
-            value={newProfileData.employmentStatus}
-            onChange={(e: SelectChangeEvent<pty.UserProfileEmploymentStatus>) =>
-              setNewProfileData({
-                ...newProfileData,
-                employmentStatus:
-                  pty.UserProfileEmploymentStatus[
-                    e.target
-                      .value as keyof typeof pty.UserProfileEmploymentStatus
-                  ],
-              })
-            }
-          >
-            <MenuItem value={pty.UserProfileEmploymentStatus.FULLTIME}>
-              Full-time
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEmploymentStatus.PARTTIME}>
-              Part-time
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEmploymentStatus.UNEMPLOYED}>
-              Unemployed
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEmploymentStatus.STUDENT}>
-              Student
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEmploymentStatus.RETIRED}>
-              Retired
-            </MenuItem>
-            <MenuItem value={pty.UserProfileEmploymentStatus.OTHER}>
-              Other
-            </MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="device-usage-frequency">
-            How frequently do you use electronic devices?
-          </FormLabel>
-          <Select
-            labelId="device-usage-frequency"
-            value={newProfileData.deviceUsageFrequency}
-            onChange={(
-              e: SelectChangeEvent<pty.UserProfileDeviceUsageFrequency>,
-            ) =>
-              setNewProfileData({
-                ...newProfileData,
-                deviceUsageFrequency:
-                  pty.UserProfileDeviceUsageFrequency[
-                    e.target
-                      .value as keyof typeof pty.UserProfileDeviceUsageFrequency
-                  ],
-              })
-            }
-          >
-            <MenuItem value={pty.UserProfileDeviceUsageFrequency.FREQUENTLY}>
-              Frequently
-            </MenuItem>
-            <MenuItem value={pty.UserProfileDeviceUsageFrequency.OCCASIONALLY}>
-              Occasionally
-            </MenuItem>
-            <MenuItem value={pty.UserProfileDeviceUsageFrequency.RARELY}>
-              Rarely
-            </MenuItem>
-            <MenuItem value={pty.UserProfileDeviceUsageFrequency.NEVER}>
-              Never
-            </MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="household-income">
-            What is your household income level?
-          </FormLabel>
-          <Select
-            labelId="household-income"
-            value={newProfileData.householdIncome}
-            onChange={(e: SelectChangeEvent<pty.UserProfileHouseholdIncome>) =>
-              setNewProfileData({
-                ...newProfileData,
-                householdIncome:
-                  pty.UserProfileHouseholdIncome[
-                    e.target
-                      .value as keyof typeof pty.UserProfileHouseholdIncome
-                  ],
-              })
-            }
-          >
-            <MenuItem value={pty.UserProfileHouseholdIncome.UNDER_20K}>
-              Under $20,000
-            </MenuItem>
-            <MenuItem value={pty.UserProfileHouseholdIncome.BTW_20_40K}>
-              Between $20,000 and $40,000
-            </MenuItem>
-            <MenuItem value={pty.UserProfileHouseholdIncome.BTW_40_60K}>
-              Between $40,000 and $60,000
-            </MenuItem>
-            <MenuItem value={pty.UserProfileHouseholdIncome.BTW_60_80K}>
-              Between $60,000 and $80,000
-            </MenuItem>
-            <MenuItem value={pty.UserProfileHouseholdIncome.OVER_100K}>
-              Over $100,000
-            </MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="language">What is your primary language?</FormLabel>
-          <RadioGroup
-            aria-labelledby="language"
-            value={newProfileData.language}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setNewProfileData({
-                ...newProfileData,
-                language: e.target.value as pty.UserProfileLanguage,
-              })
-            }
-          >
-            <FormControlLabel
-              value="English"
-              control={<Radio />}
-              label="English"
-            />
-            <FormControlLabel value="Other" control={<Radio />} label="Other" />
-          </RadioGroup>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="from-global-south">
-            Are you from a country located in the Global South? (Countries in
-            Africa, Latin America, Asia, and Oceania)
-          </FormLabel>
-          <RadioGroup
-            aria-labelledby="from-global-south"
-            value={newProfileData.fromGlobalSouth}
-            row
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setNewProfileData({
-                ...newProfileData,
-                fromGlobalSouth: e.target.value as unknown as boolean,
-              })
-            }
-          >
-            <FormControlLabel value={true} control={<Radio />} label="Yes" />
-            <FormControlLabel value={false} control={<Radio />} label="No" />
-          </RadioGroup>
-        </FormControl>
-
-        <FormControl>
-          <FormLabel id="study-hear">
-            How did you hear about this study?
-          </FormLabel>
-          <TextField
-            aria-labelledby="study-hear"
-            value={newProfileData.studyHearAbout}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setNewProfileData({
-                ...newProfileData,
-                studyHearAbout: e.target.value as string,
-              })
-            }
-          />
-        </FormControl>
-
-        <Button
-          variant="outlined"
-          onClick={handleSubmitProfile}
-          disabled={isSubmitting}
-        >
-          Submit Profile
-        </Button>
-      </Stack>
+            Continue
+          </Button> */}
+        </Box>
+      )}
     </Box>
   )
 }

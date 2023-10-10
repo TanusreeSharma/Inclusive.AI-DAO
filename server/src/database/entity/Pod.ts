@@ -1,6 +1,6 @@
 import { BaseEntity, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm'
 
-import { PodTeam, User, ValueQuestion } from '@/database/entity'
+import { User, ValueQuestion } from '@/database/entity'
 
 @Entity()
 export class Pod extends BaseEntity {
@@ -20,15 +20,11 @@ export class Pod extends BaseEntity {
   description: string
 
   @CreateDateColumn({ type: 'timestamp' })
-  createdAt: number
+  createdAt: Date
 
   // A Pod has many users in it
   @OneToMany((type) => User, (user) => user.pod)
   user: User[]
-
-  // A Pod has many teams associated
-  @OneToMany((type) => PodTeam, (podTeam) => podTeam.pod)
-  podTeam: PodTeam[]
 
   // A Pod has many Value Topics associated
   @OneToMany((type) => ValueQuestion, (valueQuestion) => valueQuestion.pod)

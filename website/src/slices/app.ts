@@ -12,6 +12,9 @@ export interface AppState {
   user: {
     jwtToken: string
   }
+  watchedIntro: boolean
+  hasVoted: boolean
+  completedVotingIntro: boolean
 }
 
 const initialState: AppState = {
@@ -22,6 +25,9 @@ const initialState: AppState = {
   user: {
     jwtToken: '',
   },
+  watchedIntro: false,
+  hasVoted: false,
+  completedVotingIntro: false,
 }
 
 export const appSlice = createSlice({
@@ -39,14 +45,32 @@ export const appSlice = createSlice({
     // },
     setUserJwtToken: (state, action: PayloadAction<string>) => {
       state.user.jwtToken = action.payload
-    }
+    },
+    setWatchedIntro: (state, action: PayloadAction<boolean>) => {
+      state.watchedIntro = action.payload
+    },
+    setHasVoted: (state, action: PayloadAction<boolean>) => {
+      state.hasVoted = action.payload
+    },
+    setCompletedVotingIntro: (state, action: PayloadAction<boolean>) => {
+      state.completedVotingIntro = action.payload
+    },
   },
 })
 
 // export const { setWeb3AuthCache, unsetWeb3AuthCache } = appSlice.actions
-export const { setUserJwtToken } = appSlice.actions
+export const {
+  setUserJwtToken,
+  setWatchedIntro,
+  setHasVoted,
+  setCompletedVotingIntro,
+} = appSlice.actions
 
 // export const selectWeb3AuthCache = (state: RootState) => state.app.web3AuthCache
 export const selectUserJwtToken = (state: RootState) => state.app.user.jwtToken
+export const selectWatchedIntro = (state: RootState) => state.app.watchedIntro
+export const selectHasVoted = (state: RootState) => state.app.hasVoted
+export const selectCompletedVotingIntro = (state: RootState) =>
+  state.app.completedVotingIntro
 
 export default appSlice.reducer

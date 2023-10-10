@@ -2,6 +2,7 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 
 import type { RootState, AppDispatch } from '@/store'
 
+export * from './useSnapshotProposalData'
 export * from './useSocket'
 export * from './useWeb3Auth'
 

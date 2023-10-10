@@ -2,49 +2,39 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 import type { RootState } from '@/store'
 import * as pt from '@/types/profile'
-import type { User, UserPod } from '@/types/user'
-import { ApiResponseIs, userApi } from '@/services/user'
-
-export interface UserProfile {
-  user: User
-  ageRange: pt.UserProfileAgeRange
-  genderIdentity: pt.UserProfileGenderIdentity
-  genderIdentityOther?: string
-  hasVisualImpairment: boolean
-  visionLevel: pt.UserProfileVisionLevel
-  ethnicBackground: pt.UserProfileEthnicBackground
-  ethnicBackgroundOther?: string
-  countryResideIn: string
-  isEnrolledInEducation: boolean
-  highestLevelEducation: pt.UserProfileEducationLevel
-  employmentStatus: pt.UserProfileEmploymentStatus
-  employmentStatusOther?: string
-  deviceUsageFrequency: pt.UserProfileDeviceUsageFrequency
-  householdIncome: pt.UserProfileHouseholdIncome
-  language: pt.UserProfileLanguage
-  languageOther?: string
-  fromGlobalSouth: boolean
-  studyHearAbout: string
-}
+import type { UserExtendedData, UserPod, UserProfile } from '@/types/user'
+import { userApi } from '@/services/user'
+import { surveyApi } from '@/services/survey'
 
 export interface UserState {
-  pod: UserPod | null
+  user: UserExtendedData['user']
+  pod: UserPod
   profile: UserProfile
 }
 
 // Define the initial state using that type
 const initialState: UserState = {
-  pod: null,
+  user: {
+    id: '',
+    name: '',
+    role: 'participant',
+    appPubkey: '',
+    address: '',
+    votingTokenReceivedBlockNumber: 0,
+    votingEarly: false,
+    aiSurveyCompleted: false,
+  },
+  pod: {
+    id: 0,
+    name: '',
+    slug: '',
+    valueQuestion: [],
+    createdAt: '0',
+    isActive: false,
+  },
   profile: {
-    user: {
-      id: '',
-      name: '',
-      role: 'participant',
-    },
     ageRange: 'under_18',
     genderIdentity: pt.UserProfileGenderIdentity.OTHER,
-    hasVisualImpairment: false,
-    visionLevel: pt.UserProfileVisionLevel.NONE_ABOVE,
     ethnicBackground: pt.UserProfileEthnicBackground.OTHER,
     countryResideIn: '',
     isEnrolledInEducation: false,
@@ -52,9 +42,9 @@ const initialState: UserState = {
     employmentStatus: pt.UserProfileEmploymentStatus.OTHER,
     deviceUsageFrequency: pt.UserProfileDeviceUsageFrequency.FREQUENTLY,
     householdIncome: pt.UserProfileHouseholdIncome.OVER_100K,
-    language: 'English',
-    fromGlobalSouth: false,
-    studyHearAbout: '',
+    primaryLanguage: 'English',
+    // fromGlobalSouth: false,
+    studyHear: '',
   },
 }
 
@@ -64,44 +54,50 @@ export const userSlice = createSlice({
   reducers: {
     updateUserProfile: (state, action: PayloadAction<UserProfile>) => {
       // Use spread operator to not erase any existing fields
-      state.profile = {
-        ...action.payload,
-      }
-    },
-    updateUserProfileId: (state, action: PayloadAction<string>) => {
-      state.profile.user.id = action.payload
+      state.profile = action.payload
     },
   },
   extraReducers: (builder) => {
+    // update user data on `getUser` fetch is successful
     builder.addMatcher(
-      userApi.endpoints.getUserProfile.matchFulfilled,
+      userApi.endpoints.getUser.matchFulfilled,
       (state, action) => {
-        if ((action.payload as ApiResponseIs).is) return
-        state.profile = {
-          ...state.pod,
-          ...(action.payload as UserProfile),
-        }
+        if (action.payload.error) return
+
+        const userData = action.payload.payload
+        if (!userData) return
+
+        // console.log(userData.user, state)
+
+        state.user.address = userData.user.address
+        state.user.id = userData.user.id
+
+        state.user.votingEarly = userData.user.votingEarly
+        state.user.votingTokenReceivedBlockNumber =
+          userData.user.votingTokenReceivedBlockNumber
+        // console.log('userData.user.aiSurveyCompleted', userData.user.aiSurveyCompleted)
+        state.user.aiSurveyCompleted = userData.user.aiSurveyCompleted
+        state.pod = userData.pod
+        // state.profile = userData.profile
       },
     )
 
+    // update user data on `postSurveyAi` fetch is successful
     builder.addMatcher(
-      userApi.endpoints.getUserPod.matchFulfilled,
+      surveyApi.endpoints.postSurveyAi.matchFulfilled,
       (state, action) => {
-        if ((action.payload as ApiResponseIs).is) return
-        state.pod = {
-          ...state.pod,
-          ...(action.payload as UserPod),
-        }
+        if (!action.payload) return
+        state.user.aiSurveyCompleted = true
       },
     )
   },
 })
 
-export const { updateUserProfile, updateUserProfileId } = userSlice.actions
+export const { updateUserProfile } = userSlice.actions
 
+export const selectUserData = (state: RootState) => state.user
+export const selectUser = (state: RootState) => state.user.user
 export const selectUserPod = (state: RootState) => state.user.pod
 export const selectUserProfile = (state: RootState) => state.user.profile
-export const selectUserProfileId = (state: RootState) =>
-  state.user.profile.user.id
 
 export default userSlice.reducer

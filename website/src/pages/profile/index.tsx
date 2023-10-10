@@ -1,17 +1,19 @@
 import { Stack, Typography } from '@mui/material'
+import { useTracking } from 'react-tracking'
 
-import { Web3AuthProviderContext } from '@/components/Providers'
 import { useAppSelector, useWeb3Auth } from '@/hooks'
 import { selectUserProfile } from '@/slices/user'
 import * as pty from '@/types/profile'
 
 export default function ProfilePage() {
+  useTracking({ page: 'Profile' })
+
   const web3Auth = useWeb3Auth()
   const web3AuthUser = web3Auth.user
 
   const userProfile = useAppSelector(selectUserProfile)
 
-  if (!web3Auth || !web3AuthUser || !userProfile) return (<></>)
+  if (!web3Auth || !web3AuthUser || !userProfile) return <></>
 
   return (
     <Stack direction="column" spacing={2}>
@@ -28,19 +30,20 @@ export default function ProfilePage() {
         Age Range: {userProfile.ageRange}
       </Typography>
       <Typography variant="body1" pb={2}>
-        Gender Identity: {pty.UserProfileGenderIdentity[userProfile.genderIdentity]}
+        Gender Identity:{' '}
+        {pty.UserProfileGenderIdentity[userProfile.genderIdentity]}
       </Typography>
       <Typography variant="body1" pb={2}>
-        Vision Level: {pty.UserProfileVisionLevel[userProfile.visionLevel]}
+        Ethnic Background:{' '}
+        {pty.UserProfileEthnicBackground[userProfile.ethnicBackground]}
       </Typography>
       <Typography variant="body1" pb={2}>
-        Ethical Background: {pty.UserProfileEthnicBackground[userProfile.ethnicBackground]}
+        Enrolled in Education:{' '}
+        {userProfile.isEnrolledInEducation ? 'Yes' : 'No'}
       </Typography>
       <Typography variant="body1" pb={2}>
-        Enrolled in Education: {userProfile.isEnrolledInEducation ? 'Yes' : 'No'}
-      </Typography>
-      <Typography variant="body1" pb={2}>
-        Highest Education Level: {pty.UserProfileEducationLevel[userProfile.highestLevelEducation]}
+        Highest Education Level:{' '}
+        {pty.UserProfileEducationLevel[userProfile.highestLevelEducation]}
       </Typography>
     </Stack>
   )

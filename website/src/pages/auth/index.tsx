@@ -1,33 +1,17 @@
-import { Box, Button, Stack, Typography } from '@mui/material'
-import { useRouter } from 'next/router'
-import { useEffect } from 'react'
+import { Button, Stack, Typography } from '@mui/material'
+import { useTracking } from 'react-tracking'
 
 import { useWeb3Auth } from '@/hooks'
-import { useGetUserProfileQuery } from '@/services/user'
-import { UserProfile } from '@/slices/user'
+import { LoadingScreen } from '@/components'
 
 export default function AuthPage() {
   const web3Auth = useWeb3Auth()
-  const router = useRouter()
+  useTracking({ page: 'Auth' })
 
-  const {
-    data: fetchedUserProfile,
-    error: fetchErrorUserProfile,
-    isLoading: isUserProfileLoading,
-    isError: isUserProfileError,
-  } = useGetUserProfileQuery(web3Auth.user?.appPubkey || '', {
-    skip: !web3Auth.user?.appPubkey,
-  })
-
-  useEffect(() => {
-    if (
-      web3Auth.provider &&
-      web3Auth.user &&
-      (fetchedUserProfile as UserProfile)?.user?.id === web3Auth.user.email
-    ) {
-      router.replace('/')
-    }
-  }, [web3Auth, fetchedUserProfile])
+  // if ready and authenticated, show loading while waiting to redirect to home
+  if (!web3Auth.isReady || (web3Auth.isReady && web3Auth.isAuthenticated)) {
+    return <LoadingScreen />
+  }
 
   return (
     <Stack
@@ -38,7 +22,7 @@ export default function AuthPage() {
       pb={10}
     >
       <Typography
-        variant="h5"
+        variant="h4"
         fontWeight="bold"
         pb={4}
         color="rgb(80, 130, 235)"
@@ -49,7 +33,7 @@ export default function AuthPage() {
         variant="outlined"
         size="large"
         onClick={web3Auth.login}
-        sx={{ width: 200 }}
+        sx={{ width: 250, fontSize: '1.1rem' }}
       >
         Sign Up / Sign In
       </Button>
