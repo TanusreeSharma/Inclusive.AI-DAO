@@ -18,7 +18,8 @@
     "edit-space": "ts-node -r tsconfig-paths/register src/scripts/edit-space.ts",
     "export-data": "ts-node -r tsconfig-paths/register src/scripts/export-data.ts",
     "export-votes": "ts-node -r tsconfig-paths/register src/scripts/export-votes.ts",
-    "select-new-users": "ts-node -r tsconfig-paths/register src/scripts/select-new-users.ts"
+    "export-new-users": "ts-node -r tsconfig-paths/register src/scripts/export-new-users.ts",
+    "export-by-voters-phase": "ts-node -r tsconfig-paths/register src/scripts/export-by-voters-phase.ts"
   },
   "dependencies": {
     "@apollo/client": "^3.8.1",

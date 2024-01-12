@@ -15,7 +15,7 @@ const valueQuestionIds = {
   'ranked-early': 4
 }
 
-async function fetchVoteChoices(proposalId: string, userAddresses: string[]): Promise<any> {
+async function fetchUserVoteChoices(proposalId: string, userAddresses: string[]): Promise<any> {
   const query = `
     query Votes($proposalId: String!, $userAddresses: [String!]!) {
       votes(where: {proposal: $proposalId, voter_in: $userAddresses}) {
@@ -121,7 +121,7 @@ export async function exportVotes() {
     if (!userAddresses || !userAddresses.length || !snapshotProposalId)
       throw new Error('Missing user addresses or snapshot proposal ID')
 
-    const proposalVoteChoices = await fetchVoteChoices(snapshotProposalId, userAddresses)
+    const proposalVoteChoices = await fetchUserVoteChoices(snapshotProposalId, userAddresses)
     console.log(proposalVoteChoices)
 
     voteChoices.set(podSlug, proposalVoteChoices)

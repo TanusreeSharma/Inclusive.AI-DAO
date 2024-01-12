@@ -10,7 +10,7 @@ import { useAppDispatch, useAppSelector, useWeb3Auth } from '@/hooks'
 // import { usePreInitUserMutation } from '@/services/user'
 import { useCreateUserMutation } from '@/services/user'
 import { setWatchedIntro } from '@/slices/app'
-import { selectUserData } from '@/slices/user'
+import { selectUserData, setHasSentCreateRequest } from '@/slices/user'
 
 //const introYoutubeUrl = 'https://www.youtube.com/watch?v=sqQrN0iZBs0' // DALL-E 3
 const introYoutubeUrl = 'https://www.youtube.com/watch?v=oBU2p72SsrM' // Inclusive AI — Intro
@@ -39,8 +39,9 @@ export default function IntroPage() {
 
     const createUserFn = async () => {
       try {
+        console.log(web3Auth, userData)
         if (!web3Auth || !web3Auth.user || !web3Auth.provider) return
-        if (userData.user.address !== '') return // address is set, ie. getUser successful
+        if (userData.user.hasSentCreateRequest) return
 
         const userAddress = await new Web3Provider(web3Auth.provider)
           .getSigner()
@@ -53,6 +54,7 @@ export default function IntroPage() {
           appPubkey: web3Auth.user.appPubkey || '',
           address: userAddress,
         })
+        dispatch(setHasSentCreateRequest(true))
 
         console.log(res)
       } catch (err) {
@@ -61,9 +63,10 @@ export default function IntroPage() {
     }
 
     createUserFn()
-  }, [createUser, userData.user.address, web3Auth])
+  }, [createUser, dispatch, userData, userData.user.address, web3Auth])
 
   useEffect(() => {
+    console.log(createUserRes)
     if (
       createUserRes.isSuccess &&
       !createUserRes.data.error &&

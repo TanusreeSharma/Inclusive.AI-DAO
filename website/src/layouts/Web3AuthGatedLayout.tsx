@@ -8,6 +8,7 @@ import { LoadingScreen, Topbar } from '@/components'
 import { useAppSelector, useWeb3Auth } from '@/hooks'
 import { BodyLayout, MainLayout } from '@/layouts'
 import { selectWatchedIntro } from '@/slices/app'
+import { selectUserData } from '@/slices/user'
 
 // function isWeb3UserFetched(ctx: Web3AuthProviderData) {
 //   return !!ctx.user && !!ctx.provider
@@ -18,6 +19,7 @@ export function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
   const router = useRouter()
 
   const hasWatchedIntro = useAppSelector(selectWatchedIntro)
+  const userData = useAppSelector(selectUserData)
 
   // const userData = useAppSelector(selectUserData)
 
@@ -125,6 +127,10 @@ export function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
         router.push({ pathname: '/intro' })
       }
 
+      if (!userData.user.hasSentCreateRequest && router.pathname !== '/intro') {
+        router.push({ pathname: '/intro' })
+      }
+
       // else if (router.pathname == '/auth') {
       //   router.replace({ pathname: '/', query: router.query })
       //   return
@@ -134,7 +140,7 @@ export function Web3AuthGatedLayout({ children }: React.PropsWithChildren) {
       // if (router.pathname !== '/') {
       // }
     }
-  }, [hasWatchedIntro, router, web3Auth])
+  }, [hasWatchedIntro, router, userData.user.hasSentCreateRequest, web3Auth])
 
   // if (router.pathname === '/auth') {
   //   return (

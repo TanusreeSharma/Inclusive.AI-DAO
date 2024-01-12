@@ -70,7 +70,7 @@ export async function createProposals() {
   const proms = Object.keys(valueQuestionIds).map(async (podSlug) => {
     console.log(`>>> ${podSlug}`)
     const startTimestamp = Math.floor(Date.now() / 1000)
-    const endTimestamp = startTimestamp + 60 * 60 * 24 * 1 // 1 day
+    const endTimestamp = startTimestamp + 60 * 60 * 24 * 3 // 3 day
 
     // const proposal = valueQuestionProposal[podSlug]
 

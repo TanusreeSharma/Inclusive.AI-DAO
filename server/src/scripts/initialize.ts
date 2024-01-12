@@ -6,6 +6,8 @@ import { assignSnapshotProposal, assignVotePowerToUser } from '@/utils'
 import { createProposals } from './create-proposal'
 import { MoreThan } from 'typeorm'
 
+import { selectNewUsers } from '@/utils/select-new-users'
+
 export const valueQuestionIds = {
   'quadratic-equal': 1,
   'quadratic-early': 2,
@@ -42,23 +44,37 @@ export async function initialize() {
   // only users registered after this timestamp will be considered for all actions below
   //const considerUsersAfterDate = new Date('2023-09-23T12:00:00.000Z')
   //const considerUsersAfterDate = new Date('2023-10-05T10:00:00.000Z')
-  const considerUsersAfterDate = new Date('2023-10-07T00:00:00.000Z')
+  const considerUsersAfterDate = new Date('2023-10-14T00:00:00.000Z')
+
+  const users = await selectNewUsers()
+
+  console.log('============================================')
+  console.log(`Eligible User Count: ${users.length}`)
+  console.log('============================================')
 
   //
   // Assign users early weights or not (for users in "early" pods)
   //
 
   // Quadratic Early, 20%
-  const usersQuadraticEarlyCount = await User.count({
-    where: { pod: { slug: 'quadratic-early' }, createdAt: MoreThan(considerUsersAfterDate) }
-  })
+  const usersQuadraticEarlyCount = users
+    .map((user) => user.pod.slug)
+    .filter((slug) => slug === 'quadratic-early').length
+  // const usersQuadraticEarlyCount = await User.count({
+  //   where: { pod: { slug: 'quadratic-early' }, createdAt: MoreThan(considerUsersAfterDate) }
+  // })
+
   const usersQuadraticEarlyTopN = Math.ceil(usersQuadraticEarlyCount * 0.2)
-  const usersQuadraticEarly = await User.find({
-    where: { pod: { slug: 'quadratic-early' }, createdAt: MoreThan(considerUsersAfterDate) },
-    //order: { createdAt: 'DESC' },
-    order: { createdAt: 'ASC' },
-    take: usersQuadraticEarlyTopN
-  })
+
+  const usersQuadraticEarly = users
+    .filter((user) => user.pod.slug === 'quadratic-early')
+    .slice(0, usersQuadraticEarlyTopN)
+  // const usersQuadraticEarly = await User.find({
+  //   where: { pod: { slug: 'quadratic-early' }, createdAt: MoreThan(considerUsersAfterDate) },
+  //   //order: { createdAt: 'DESC' },
+  //   order: { createdAt: 'ASC' },
+  //   take: usersQuadraticEarlyTopN
+  // })
 
   console.log('Quadratic Early Member Counts:    ', usersQuadraticEarlyCount)
   console.log('Quadratic Early Weighted Selected:', usersQuadraticEarly.length)
@@ -68,15 +84,19 @@ export async function initialize() {
   }
 
   // Rank Early, 20%
-  const usersRankEarlyCount = await User.count({
-    where: { pod: { slug: 'ranked-early' }, createdAt: MoreThan(considerUsersAfterDate) }
-  })
+  const usersRankEarlyCount = users.map((user) => user.pod.slug).filter((slug) => slug === 'ranked-early').length
+  // const usersRankEarlyCount = await User.count({
+  //   where: { pod: { slug: 'ranked-early' }, createdAt: MoreThan(considerUsersAfterDate) }
+  // })
+
   const usersRankEarlyTopN = Math.ceil(usersRankEarlyCount * 0.2)
-  const usersRankEarly = await User.find({
-    where: { pod: { slug: 'ranked-early' }, createdAt: MoreThan(considerUsersAfterDate) },
-    order: { createdAt: 'DESC' },
-    take: usersRankEarlyTopN
-  })
+
+  const usersRankEarly = users.filter((user) => user.pod.slug === 'ranked-early').slice(0, usersRankEarlyTopN)
+  // const usersRankEarly = await User.find({
+  //   where: { pod: { slug: 'ranked-early' }, createdAt: MoreThan(considerUsersAfterDate) },
+  //   order: { createdAt: 'DESC' },
+  //   take: usersRankEarlyTopN
+  // })
 
   console.log('Rank Early Members Count:    ', usersRankEarlyCount)
   console.log('Rank Early Weighted Selected:', usersRankEarly.length)
@@ -91,13 +111,10 @@ export async function initialize() {
   // NOTE: Must be done BEFORE the proposals are created (to reflect voting power)
   //
 
-  const users = await User.find({ where: { createdAt: MoreThan(considerUsersAfterDate) }, relations: ['pod'] })
-  console.log('============================================')
-  console.log(`Eligible User Count: ${users.length}`)
-  console.log('============================================')
+  // const users = await User.find({ where: { createdAt: MoreThan(considerUsersAfterDate) }, relations: ['pod'] })
 
   for (const user of users) {
-    if (!user.pod) continue;
+    if (!user.pod) continue
     const tokenType = user.pod.slug.startsWith('quadratic') ? 'quadratic' : 'rank'
     const tokenEarlyWeight = user.pod.slug.endsWith('early')
 

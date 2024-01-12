@@ -26,6 +26,7 @@ import { useGetAiChatHistoryQuery, usePostAiChatMutation } from '@/services/ai'
 import { addMessages, selectMessageHistory } from '@/slices/chat'
 import { ChatDialogue } from '@/types'
 import { sha256 } from '@/utils'
+import { FetchBaseQueryError } from '@reduxjs/toolkit/dist/query'
 
 interface AiChatBoxProps {
   connection: string
@@ -33,6 +34,13 @@ interface AiChatBoxProps {
   promptSuggestions: string[]
   isMainChat?: boolean
   sx?: SxProps
+}
+
+interface ChatData {
+  appPubkey: string
+  connection: string
+  dialogue: ChatDialogue
+  location: 'main-chat' | 'vote-ask'
 }
 
 export function AiChatBox(props: AiChatBoxProps) {
@@ -58,6 +66,13 @@ export function AiChatBox(props: AiChatBoxProps) {
   const [answeredInitialImage, setAnsweredInitialImage] = useState(
     selfMessageHistory.length > 0,
   )
+
+  const sendingChatData = useRef<ChatData>({
+    appPubkey: '',
+    connection: '',
+    dialogue: { role: 'user', content: '', createdAt: 0 },
+    location: 'main-chat',
+  })
 
   const [postAiChat, postAiChatResult] = usePostAiChatMutation()
 
@@ -96,12 +111,18 @@ export function AiChatBox(props: AiChatBoxProps) {
         createdAt: Math.floor(Date.now() / 1000),
       }
 
-      postAiChat({
+      setDraftMessage('Waiting for response...') // for self rooms
+
+      const chatData = {
         appPubkey: web3AuthUser.appPubkey,
         connection,
         dialogue: currentMessage,
         location: props.isMainChat ? 'main-chat' : 'vote-ask',
-      })
+      } as ChatData
+
+      sendingChatData.current = chatData
+
+      postAiChat(chatData)
 
       dispatch(
         addMessages({
@@ -109,7 +130,6 @@ export function AiChatBox(props: AiChatBoxProps) {
           messages: [currentMessage],
         }),
       )
-      setDraftMessage('Waiting for response...') // for self rooms
     },
     [
       draftMessage,
@@ -162,14 +182,22 @@ export function AiChatBox(props: AiChatBoxProps) {
 
     if (isError) {
       console.error(error)
-      setDraftMessage('Error...')
+      // setDraftMessage('Error...')
+      if (
+        'status' in (error as FetchBaseQueryError) &&
+        (error as FetchBaseQueryError).status === 'TIMEOUT_ERROR'
+      ) {
+        postAiChat(sendingChatData.current)
+      } else {
+        setDraftMessage('Error... Please refresh and resend...')
+      }
     }
     if (!isLoading && !!data && !!data.dialogue) {
       // Message is added in `extraReducers` of `chat` reducer
       setDraftMessage('')
       setIsChatDisabled(false)
     }
-  }, [postAiChatResult])
+  }, [postAiChat, postAiChatResult])
 
   // Scroll to Bottom of Chat at initial load
   useEffect(() => {

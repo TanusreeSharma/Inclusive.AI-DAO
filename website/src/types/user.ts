@@ -16,6 +16,7 @@ export type UserExtendedData = {
     votingTokenReceivedBlockNumber: number
     votingEarly: boolean
     aiSurveyCompleted: boolean
+    hasSentCreateRequest: boolean
   }
   pod: UserPod
   profile: UserProfile

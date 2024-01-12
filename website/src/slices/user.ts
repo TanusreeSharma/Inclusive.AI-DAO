@@ -23,6 +23,7 @@ const initialState: UserState = {
     votingTokenReceivedBlockNumber: 0,
     votingEarly: false,
     aiSurveyCompleted: false,
+    hasSentCreateRequest: false,
   },
   pod: {
     id: 0,
@@ -55,6 +56,9 @@ export const userSlice = createSlice({
     updateUserProfile: (state, action: PayloadAction<UserProfile>) => {
       // Use spread operator to not erase any existing fields
       state.profile = action.payload
+    },
+    setHasSentCreateRequest: (state, action: PayloadAction<boolean>) => {
+      state.user.hasSentCreateRequest = action.payload
     },
   },
   extraReducers: (builder) => {
@@ -93,7 +97,7 @@ export const userSlice = createSlice({
   },
 })
 
-export const { updateUserProfile } = userSlice.actions
+export const { updateUserProfile, setHasSentCreateRequest } = userSlice.actions
 
 export const selectUserData = (state: RootState) => state.user
 export const selectUser = (state: RootState) => state.user.user
