@@ -1,18 +1,28 @@
-# DAO Helper
+# Website
 
 ## Instructions
-Run
-```bash
-cd next-app
-yarn build:extension
+
+Install packages (using npm or yarn)
+```
+yarn install
 ```
 
-Then
-1. Visit `chrome://extensions` in Chrome URL bar
-2. Toggle on the `Developer Mode` (upper-right corner).
-3. Click "Load unpacked"
-4. Select `extension` folder from the root folder
+Register on Web3Auth.io and create a Plug-and-Play project to obtain credentials.
 
-You should now see the extension next to your URL bar (or under the menu when clicking "Extension" icon).
+Make sure that there is `.env.local` at the root folder with content:
+```
+NEXT_PUBLIC_WS_URL="ws://localhost:8080"
+NEXT_PUBLIC_API_URL="http://localhost:8080"
 
-Visit any Snapshot proposal page and click on the extension icon to see some stats!
+NEXT_PUBLIC_NODE_ENV="development"
+NEXT_PUBLIC_WEB3AUTH_TARGET="testnet"
+
+NEXT_PUBLIC_WEB3AUTH_VERIFIER_ID_TESTNET=<WEB3AUTH_PLUG_AND_PLAY_VERIFIER_ID>
+```
+
+Make sure that the server is running. If the server is not running, you will only be able to login via Web3Auth (if it's configured correctly). After logging in using social auth, the website will continuously interact with the server for various tasks, such as registering user, sending chats, and receiving AI responses.
+
+Run the website at `localhost:3000`
+```
+yarn dev
+```
